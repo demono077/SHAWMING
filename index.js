@@ -87,9 +87,9 @@ bot.onText(/\/start/, (msg) => {
     const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
 
     // الأزرار الأساسية
-    // التعديل 1: توجيه المستخدم لشات group2 عند الضغط على زر الإضافة الأول
+    // زر البوت يوجه المستخدم لشات group1 كبداية
     let keyboard = [
-        [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group2), style: 'danger' }],
+        [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
         [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
     ];
 
@@ -133,7 +133,7 @@ bot.on('callback_query', (query) => {
     else if (data === "back_to_start") {
         const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group2), style: 'danger' }],
+            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
         if (userId.toString() === config.adminId.toString()) {
@@ -205,15 +205,17 @@ bot.on('chat_member', async (update) => {
         const oldStatus = update.old_chat_member && update.old_chat_member.status ? update.old_chat_member.status : null;
         const newStatus = update.new_chat_member.status;
 
-        // التعديل 2: السماح برسالة الانضمام أن تُرسل
+        // السماح برسالة الانضمام أن تُرسل
         if (oldStatus === 'left' && newStatus === 'member') {
             if (!claimJoinEvent(chatId, adderId)) return;
 
             const user = db.getUser(adderId, adderName);
             const remaining = Math.max(0, config.targetMembers - user.addedCount);
 
-            // التعديل 1: توجيه الزر داخل الجروبات لبروفايل group2
-            const buttonUrl = getGroupProfileLink(config.group2);
+            // إذا كان الانضمام في group1: الزر يوجه لشات group2
+            // إذا كان الانضمام في group2: الزر يوجه لبروفايل group2
+            const isGroup1 = String(update.chat.username || update.chat.id) === String(config.group1).replace('@', '');
+            const buttonUrl = isGroup1 ? getGroupLink(config.group2) : getGroupProfileLink(config.group2);
 
             await sendGroupProgressMessage(chatId, adderName, 0, user.addedCount, remaining, buttonUrl);
         }
@@ -228,8 +230,10 @@ bot.on('message', async (msg) => {
         const adderId = msg.from.id;
         const adderName = msg.from.first_name;
 
-        // التعديل 1: جميع الأزرار داخل الجروبات ستوجه المستخدم لبروفايل group2
-        const buttonUrl = getGroupProfileLink(config.group2);
+        // إذا كانت الرسالة في group1: الزر يوجه لشات group2
+        // إذا كانت الرسالة في group2: الزر يوجه لبروفايل group2
+        const isGroup1 = String(msg.chat.username || msg.chat.id) === String(config.group1).replace('@', '');
+        const buttonUrl = isGroup1 ? getGroupLink(config.group2) : getGroupProfileLink(config.group2);
 
         db.getUser(adderId, adderName);
 
