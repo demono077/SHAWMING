@@ -27,7 +27,7 @@ bot.onText(/\/start/, (msg) => {
 
     // الأزرار الأساسية للمستخدم
     let keyboard = [
-        [{ text: "➕ إضافة أصدقائي", url: "https://t.me/" + config.addGroupUsername }],
+        [{ text: "➕ إضافة أصدقائي", url: "[https://t.me/](https://t.me/)" + config.addGroupUsername }],
         [{ text: "📊 إحصائياتي", callback_data: "my_stats" }]
     ];
 
@@ -71,7 +71,7 @@ bot.on('callback_query', (query) => {
     else if (data === "back_to_start") {
         const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: "https://t.me/" + config.addGroupUsername }],
+            [{ text: "➕ إضافة أصدقائي", url: "[https://t.me/](https://t.me/)" + config.addGroupUsername }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats" }]
         ];
         if (userId.toString() === config.adminId.toString()) {
@@ -161,7 +161,7 @@ bot.on('message', (msg) => {
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "➕ اضف اعضاء", url: "https://t.me/" + config.addGroupUsername }]
+                        [{ text: "➕ اضف اعضاء", url: "[https://t.me/](https://t.me/)" + config.addGroupUsername }]
                     ]
                 }
             });
@@ -177,7 +177,7 @@ bot.on('message', (msg) => {
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "➕ اضف اعضاء", url: "https://t.me/" + config.addGroupUsername }]
+                        [{ text: "➕ اضف اعضاء", url: "[https://t.me/](https://t.me/)" + config.addGroupUsername }]
                     ]
                 }
             });
