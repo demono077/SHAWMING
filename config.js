@@ -7,7 +7,7 @@ module.exports = {
     
     // يوزر جروب الإضافة (بدون علامة @)
     // ملاحظة: تأكد أن هذا يوزر لجروب حقيقي وليس بوت
-    addGroupUsername: "ZXAZAZ", 
+    addGroupUsername: "SHAW1236", 
     
     // رابط الجروب السري
     secretGroupLink: "[https://t.me/+Au-wTZaUQdU4MGFk](https://t.me/+Au-wTZaUQdU4MGFk)",
