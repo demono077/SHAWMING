@@ -1,3 +1,4 @@
+```javascript
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('./config');
 const db = require('./db');
@@ -130,29 +131,52 @@ bot.on('message', async (msg) => {
     }
 });
 
-// مراقبة الجروب لمعرفة من قام بإضافة أعضاء
+// مراقبة الجروب لمعرفة من قام بالانضمام أو إضافة أعضاء
 bot.on('message', (msg) => {
-    // التأكد أن الرسالة تحتوي على أعضاء جدد
-    if (msg.new_chat_members) {
+    // التأكد أن الرسالة في جروب وتحتوي على أعضاء جدد
+    if (msg.chat.type !== 'private' && msg.new_chat_members) {
         const adderId = msg.from.id;
         const adderName = msg.from.first_name;
-        
-        // حساب عدد الأعضاء المضافين (واستبعاد الشخص إذا كان قد دخل بنفسه عبر رابط)
+
+        // التأكد من تسجيل المستخدم في قاعدة البيانات بمجرد تفاعله
+        db.getUser(adderId, adderName);
+
         let addedRealMembersCount = 0;
+        let selfJoin = false;
+
         msg.new_chat_members.forEach(member => {
-            if (member.id !== adderId && !member.is_bot) {
+            if (member.id === adderId) {
+                // المستخدم انضم بنفسه للجروب
+                selfJoin = true;
+            } else if (!member.is_bot) {
+                // المستخدم قام بإضافة أعضاء حقيقيين (وليس بوتات)
                 addedRealMembersCount++;
             }
         });
 
-        // إذا قام شخص بإضافة أشخاص حقيقيين (ليس نفسه وليس بوت)
+        // 1. إذا كان المستخدم قد دخل الجروب بنفسه (عضو جديد يرى رسالة البدء)
+        if (selfJoin) {
+            const user = db.getUser(adderId, adderName);
+            const remaining = Math.max(0, config.targetMembers - user.addedCount);
+
+            const welcomeGroupMsg = `⚠️ المستخدم **${adderName}** ضاف 0 عضو جديد\n✅ المجموع الحالي: ${user.addedCount} عضو\n♻️ لازم توصل لـ ${config.targetMembers} عضو علشان تاخد السري فوراً\n🔥 الفاضل: ${remaining} عضو`;
+
+            bot.sendMessage(msg.chat.id, welcomeGroupMsg, {
+                parse_mode: "Markdown",
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "➕ اضف اعضاء", url: `https://t.me/${config.addGroupUsername}` }]
+                    ]
+                }
+            });
+        }
+
+        // 2. إذا كان المستخدم قد قام بإضافة أشخاص آخرين بالفعل
         if (addedRealMembersCount > 0) {
             // تحديث بيانات الشخص الذي أضاف الأعضاء
             const updatedUser = db.addPoints(adderId, adderName, addedRealMembersCount);
-            
             const remaining = Math.max(0, config.targetMembers - updatedUser.addedCount);
-            
-            // رسالة الجروب (كما في الصورة)
+
             const groupMsg = `⚠️ المستخدم **${adderName}** ضاف ${addedRealMembersCount} عضو جديد\n✅ المجموع الحالي: ${updatedUser.addedCount} عضو\n♻️ لازم توصل لـ ${config.targetMembers} عضو علشان تاخد السري فوراً\n🔥 الفاضل: ${remaining} عضو`;
 
             bot.sendMessage(msg.chat.id, groupMsg, {
@@ -183,3 +207,5 @@ bot.on('message', (msg) => {
 });
 
 console.log("✅ البوت يعمل بنجاح...");
+
+```
