@@ -9,6 +9,9 @@ const bot = new TelegramBot(config.token, { polling: true });
 // متغير لتتبع حالة الإذاعة للمطور
 let adminState = {};
 
+// خدعة برمجية لمنع تلف الروابط أثناء النسخ واللصق
+const tgLink = "https://" + "t.me/";
+
 // دالة لمعالجة رسالة /start
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
@@ -21,12 +24,11 @@ bot.onText(/\/start/, (msg) => {
     // تسجيل المستخدم في قاعدة البيانات
     db.getUser(userId, fullName);
 
-    // استخدام علامات التنصيص المزدوجة لتفادي أخطاء النصوص العربية
     const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
 
     // الأزرار الأساسية للمستخدم
     let keyboard = [
-        [{ text: "➕ إضافة أصدقائي", url: "[https://t.me/](https://t.me/)" + config.addGroupUsername }],
+        [{ text: "➕ إضافة أصدقائي", url: tgLink + config.addGroupUsername }],
         [{ text: "📊 إحصائياتي", callback_data: "my_stats" }]
     ];
 
@@ -70,7 +72,7 @@ bot.on('callback_query', (query) => {
     else if (data === "back_to_start") {
         const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: "[https://t.me/](https://t.me/)" + config.addGroupUsername }],
+            [{ text: "➕ إضافة أصدقائي", url: tgLink + config.addGroupUsername }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats" }]
         ];
         if (userId.toString() === config.adminId.toString()) {
@@ -160,7 +162,7 @@ bot.on('message', (msg) => {
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "➕ اضف اعضاء", url: "[https://t.me/](https://t.me/)" + config.addGroupUsername }]
+                        [{ text: "➕ اضف اعضاء", url: tgLink + config.addGroupUsername }]
                     ]
                 }
             });
@@ -176,7 +178,7 @@ bot.on('message', (msg) => {
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "➕ اضف اعضاء", url: "[https://t.me/](https://t.me/)" + config.addGroupUsername }]
+                        [{ text: "➕ اضف اعضاء", url: tgLink + config.addGroupUsername }]
                     ]
                 }
             });
