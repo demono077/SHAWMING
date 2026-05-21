@@ -231,7 +231,7 @@ bot.onText(/\/start/, (msg) => {
 
     // الأزرار الأساسية
     let keyboard = [
-        [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
+        [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'success' }],
         [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
     ];
 
@@ -284,7 +284,7 @@ bot.on('callback_query', (query) => {
     else if (data === "back_to_start") {
         const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
+            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'success' }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
         if (config.adminIds.some(id => id.toString() === userId.toString())) {
@@ -369,7 +369,7 @@ bot.on('callback_query', (query) => {
         const isEnabled = toggleFakeMessages();
         
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
+            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'success' }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
         keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list", style: 'danger' }]);
