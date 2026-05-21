@@ -54,6 +54,24 @@ function claimJoinEvent(chatId, userId) {
     return true;
 }
 
+// دالة موحدة لإرسال رسالة التحديث داخل الجروب مع الزر
+async function sendGroupProgressMessage(chatId, adderName, addedCount, totalCount, remaining, buttonUrl) {
+    const groupMsg = "⚠️ المستخدم " + adderName + " ضاف " + addedCount + " عضو جديد\n" +
+        "✅ المجموع الحالي: " + totalCount + " عضو\n" +
+        "♻️ لازم توصل لـ " + config.targetMembers + " عضو علشان تاخد السري فوراً\n" +
+        "🔥 الفاضل: " + remaining + " عضو";
+
+    try {
+        await bot.sendMessage(chatId, groupMsg, {
+            reply_markup: buildJoinKeyboard(buttonUrl)
+        });
+        return true;
+    } catch (err) {
+        console.log("خطأ في إرسال رسالة التحديث بالجروب:", err.message);
+        return false;
+    }
+}
+
 // دالة لمعالجة رسالة /start
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
@@ -134,7 +152,7 @@ bot.on('callback_query', (query) => {
     }
     else if (data === "broadcast" && userId.toString() === config.adminId.toString()) {
         adminState[userId] = "WAITING_FOR_BROADCAST_MSG";
-        bot.sendMessage(chatId, "📢 قم بإرسال الرسالة الآن (نص، صورة، فيديو، الخ..). سيتم إرسالها لجميع مستخدمين البوت.\nلإلغاء الإذاعة أرسل كلمة الغاء", { parse_mode: "Markdown" });
+        bot.sendMessage(chatId, "📢 قم بإرسال الرسالة الآن (نص، صورة، فيديو، الخ..). سيتم إرسالها لجميع مستخدمي البوت.\nلإلغاء الإذاعة أرسل كلمة الغاء", { parse_mode: "Markdown" });
     }
 
     bot.answerCallbackQuery(query.id);
@@ -195,12 +213,7 @@ bot.on('chat_member', async (update) => {
 
         const buttonUrl = getGroupProfileLink(config.group2);
 
-        const welcomeGroupMsg = "⚠️ المستخدم **" + adderName + "** ضاف 0 عضو جديد\n✅ المجموع الحالي: " + user.addedCount + " عضو\n♻️ لازم توصل لـ " + config.targetMembers + " عضو علشان تاخد السري فوراً\n🔥 الفاضل: " + remaining + " عضو";
-
-        await bot.sendMessage(chatId, welcomeGroupMsg, {
-            parse_mode: "Markdown",
-            reply_markup: buildJoinKeyboard(buttonUrl)
-        }).catch(err => console.log("خطأ في إرسال الرسالة بالجروب:", err.message));
+        await sendGroupProgressMessage(chatId, adderName, 0, user.addedCount, remaining, buttonUrl);
 
         bot.answerCallbackQuery && bot.answerCallbackQuery(update.id).catch(() => {});
     } catch (err) {
@@ -238,12 +251,7 @@ bot.on('message', async (msg) => {
                 const user = db.getUser(adderId, adderName);
                 const remaining = Math.max(0, config.targetMembers - user.addedCount);
 
-                const welcomeGroupMsg = "⚠️ المستخدم **" + adderName + "** ضاف 0 عضو جديد\n✅ المجموع الحالي: " + user.addedCount + " عضو\n♻️ لازم توصل لـ " + config.targetMembers + " عضو علشان تاخد السري فوراً\n🔥 الفاضل: " + remaining + " عضو";
-
-                await bot.sendMessage(msg.chat.id, welcomeGroupMsg, {
-                    parse_mode: "Markdown",
-                    reply_markup: buildJoinKeyboard(buttonUrl)
-                }).catch(err => console.log("خطأ في إرسال الرسالة بالجروب:", err.message));
+                await sendGroupProgressMessage(msg.chat.id, adderName, 0, user.addedCount, remaining, buttonUrl);
             }
         }
 
@@ -252,12 +260,14 @@ bot.on('message', async (msg) => {
             const updatedUser = db.addPoints(adderId, adderName, addedRealMembersCount);
             const remaining = Math.max(0, config.targetMembers - updatedUser.addedCount);
 
-            const groupMsg = "⚠️ المستخدم **" + adderName + "** ضاف " + addedRealMembersCount + " عضو جديد\n✅ المجموع الحالي: " + updatedUser.addedCount + " عضو\n♻️ لازم توصل لـ " + config.targetMembers + " عضو علشان تاخد السري فوراً\n🔥 الفاضل: " + remaining + " عضو";
-
-            await bot.sendMessage(msg.chat.id, groupMsg, {
-                parse_mode: "Markdown",
-                reply_markup: buildJoinKeyboard(buttonUrl)
-            }).catch(err => console.log("خطأ في إرسال الرسالة بالجروب:", err.message));
+            await sendGroupProgressMessage(
+                msg.chat.id,
+                adderName,
+                addedRealMembersCount,
+                updatedUser.addedCount,
+                remaining,
+                buttonUrl
+            );
 
             // تسليم الجروب السري إذا تم إكمال الهدف
             if (updatedUser.addedCount >= config.targetMembers && !updatedUser.reachedTarget) {
