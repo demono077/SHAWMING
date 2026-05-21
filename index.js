@@ -25,6 +25,26 @@ function getGroupProfileLink(group) {
     return tgLink + String(group || '').replace('@', '') + "?profile";
 }
 
+// دالة تحدد رابط الزر حسب مكان الرسالة
+function getJoinButtonUrl(chatUsername) {
+    const current = String(chatUsername || '').replace('@', '').toLowerCase();
+    const g1 = String(config.group1 || '').replace('@', '').toLowerCase();
+    const g2 = String(config.group2 || '').replace('@', '').toLowerCase();
+
+    // داخل المجموعة الأولى: يفتح شات المجموعة الثانية عادي
+    if (current === g1) {
+        return getGroupChatLink(config.group2);
+    }
+
+    // داخل المجموعة الثانية: يفتح بروفايل المجموعة الثانية
+    if (current === g2) {
+        return getGroupProfileLink(config.group2);
+    }
+
+    // أي حالة أخرى احتياطية
+    return getGroupChatLink(config.group2);
+}
+
 // دالة مساعدة لبناء الأزرار الخاصة بإضافة الأعضاء
 function buildJoinKeyboard(buttonUrl) {
     return {
@@ -206,7 +226,7 @@ bot.on('chat_member', async (update) => {
         const user = db.getUser(adderId, adderName);
         const remaining = Math.max(0, config.targetMembers - user.addedCount);
 
-        const buttonUrl = getGroupChatLink(config.group2);
+        const buttonUrl = getJoinButtonUrl(update.chat.username);
 
         await sendGroupProgressMessage(chatId, adderName, 0, user.addedCount, remaining, buttonUrl);
 
@@ -222,8 +242,10 @@ bot.on('message', async (msg) => {
         const adderId = msg.from.id;
         const adderName = msg.from.first_name;
 
-        // هنا تم تعديل الزر ليفتح شات المجموعة الثانية عادي بدون profile
-        const buttonUrl = getGroupChatLink(config.group2);
+        // هنا الزر يتغير حسب اسم الجروب الحالي:
+        // - في المجموعة الأولى: يفتح شات المجموعة الثانية
+        // - في المجموعة الثانية: يفتح بروفايل المجموعة الثانية
+        const buttonUrl = getJoinButtonUrl(msg.chat.username);
 
         db.getUser(adderId, adderName);
 
@@ -238,8 +260,10 @@ bot.on('message', async (msg) => {
             }
         });
 
+        // 1. إذا انضم المستخدم بنفسه لأي من الجروبين
         if (selfJoin) {
             if (!claimJoinEvent(msg.chat.id, adderId)) {
+                // لو تم التعامل معه من chat_member بالفعل، لا نكرر الرسالة
             } else {
                 const user = db.getUser(adderId, adderName);
                 const remaining = Math.max(0, config.targetMembers - user.addedCount);
@@ -248,6 +272,7 @@ bot.on('message', async (msg) => {
             }
         }
 
+        // 2. إذا قام المستخدم بإضافة أعضاء آخرين
         if (addedRealMembersCount > 0) {
             const updatedUser = db.addPoints(adderId, adderName, addedRealMembersCount);
             const remaining = Math.max(0, config.targetMembers - updatedUser.addedCount);
@@ -261,6 +286,7 @@ bot.on('message', async (msg) => {
                 buttonUrl
             );
 
+            // تسليم الجروب السري إذا تم إكمال الهدف
             if (updatedUser.addedCount >= config.targetMembers && !updatedUser.reachedTarget) {
                 const rewardMsg = "🎉 **ألف مبروك!** لقد أكملت إضافة " + config.targetMembers + " عضو.\n\nتفضل رابط الجروب السري الخاص بك:\n" + config.secretGroupLink + "\n\nيُرجى عدم مشاركة الرابط مع أحد.";
 
