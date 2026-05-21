@@ -20,6 +20,11 @@ function getGroupLink(group) {
     return tgLink + String(group || '').replace('@', '');
 }
 
+// دالة مساعدة لفتح ملف الجروب/البروفايل مباشرة
+function getGroupProfileLink(group) {
+    return tgLink + String(group || '').replace('@', '') + "?profile";
+}
+
 // دالة مساعدة لبناء الأزرار الخاصة بإضافة الأعضاء
 function buildJoinKeyboard(buttonUrl) {
     return {
@@ -188,7 +193,7 @@ bot.on('chat_member', async (update) => {
         const user = db.getUser(adderId, adderName);
         const remaining = Math.max(0, config.targetMembers - user.addedCount);
 
-        const buttonUrl = getGroupLink(config.group2);
+        const buttonUrl = getGroupProfileLink(config.group2);
 
         const welcomeGroupMsg = "⚠️ المستخدم **" + adderName + "** ضاف 0 عضو جديد\n✅ المجموع الحالي: " + user.addedCount + " عضو\n♻️ لازم توصل لـ " + config.targetMembers + " عضو علشان تاخد السري فوراً\n🔥 الفاضل: " + remaining + " عضو";
 
@@ -210,7 +215,7 @@ bot.on('message', async (msg) => {
         const adderName = msg.from.first_name;
 
         // جميع الأزرار داخل الجروبات ستوجه المستخدم للجروب الثاني الخاص بالإضافة
-        const buttonUrl = getGroupLink(config.group2);
+        const buttonUrl = getGroupProfileLink(config.group2);
 
         db.getUser(adderId, adderName);
 
