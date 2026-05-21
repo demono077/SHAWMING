@@ -6,10 +6,10 @@ module.exports = {
     adminIds: [7715555599, 7766036499],
     
     // يوزر الجروب الأول (البوابة) - بدون علامة @
-    group1: "SHAW1236", 
+    group1: "ZXAZAZ", 
     
     // يوزر الجروب الثاني (الذي يتم فيه إضافة الأعضاء) - بدون علامة @
-    group2: "tgarba2dsl",
+    group2: "ba_w4",
     
     // رابط الجروب السري (الذي يحصل عليه بعد إكمال 50 عضو)
     secretGroupLink: "https://t.me/+Au-wTZaUQdU4MGFk",
