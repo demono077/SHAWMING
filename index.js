@@ -192,7 +192,7 @@ bot.on('message', async (msg) => {
     }
 });
 
-// استقبال فوري إضافي عند تغيّر حالة العضو في الجروب (مسار احتياطي)
+// مسار احتياطي عبر chat_member (يُستخدم فقط إذا لم يصل حدث new_chat_members)
 bot.on('chat_member', async (update) => {
     try {
         if (!update || !update.chat || !update.from || !update.new_chat_member) return;
@@ -205,8 +205,9 @@ bot.on('chat_member', async (update) => {
         const oldStatus = update.old_chat_member && update.old_chat_member.status ? update.old_chat_member.status : null;
         const newStatus = update.new_chat_member.status;
 
-        // السماح برسالة الانضمام أن تُرسل
+        // نتعامل فقط مع حالة الانضمام الجديد
         if (oldStatus === 'left' && newStatus === 'member') {
+            // claimJoinEvent تمنع التكرار: إذا سبق معالجته عبر new_chat_members لن يُعالج هنا
             if (!claimJoinEvent(chatId, adderId)) return;
 
             const user = db.getUser(adderId, adderName);
@@ -225,6 +226,7 @@ bot.on('chat_member', async (update) => {
 });
 
 // مراقبة الجروبات لمعرفة من قام بالانضمام أو إضافة أعضاء
+// هذا الحدث هو المسار الأسرع والأساسي لكلا الجروبين
 bot.on('message', async (msg) => {
     if (msg.chat.type !== 'private' && msg.new_chat_members) {
         const adderId = msg.from.id;
@@ -249,6 +251,7 @@ bot.on('message', async (msg) => {
         });
 
         // 1. إذا انضم المستخدم بنفسه لأي من الجروبين
+        // claimJoinEvent هنا تحجز الحدث فوراً لمنع chat_member من إعادة إرسال الرسالة
         if (selfJoin) {
             if (!claimJoinEvent(msg.chat.id, adderId)) {
                 // لو تم التعامل معه من chat_member بالفعل، لا نكرر الرسالة
