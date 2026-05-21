@@ -222,16 +222,17 @@ bot.onText(/\/start/, (msg) => {
     ];
 
     // إضافة أزرار المطور
-    if (userId.toString() === config.adminId.toString()) {
-        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db" }]);
-        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast" }]);
+    if (config.adminIds.some(id => id.toString() === userId.toString())) {
+        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
+        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
         
-        // زر الرسائل الوهمية
+        // زر الرسائل الوهمية بلون متغير حسب الحالة
         const fakeBtnText = fakeMessagesEnabled ? "🔴 إيقاف الرسائل الوهمية" : "🟢 تشغيل الرسائل الوهمية";
-        keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
+        const fakeBtnStyle = fakeMessagesEnabled ? 'success' : 'danger';
+        keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake", style: fakeBtnStyle }]);
         
         // زر تعديل التوقيت
-        keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval" }]);
+        keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval", style: 'danger' }]);
     }
 
     bot.sendMessage(chatId, welcomeMessage, {
@@ -271,14 +272,15 @@ bot.on('callback_query', (query) => {
             [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
-        if (userId.toString() === config.adminId.toString()) {
-            keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db" }]);
-            keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast" }]);
+        if (config.adminIds.some(id => id.toString() === userId.toString())) {
+            keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
+            keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
             
             const fakeBtnText = fakeMessagesEnabled ? "🔴 إيقاف الرسائل الوهمية" : "🟢 تشغيل الرسائل الوهمية";
-            keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
+            const fakeBtnStyle = fakeMessagesEnabled ? 'success' : 'danger';
+            keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake", style: fakeBtnStyle }]);
             
-            keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval" }]);
+            keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval", style: 'danger' }]);
         }
         bot.editMessageText(welcomeMessage, {
             chat_id: chatId,
@@ -288,14 +290,14 @@ bot.on('callback_query', (query) => {
         });
     }
     // أوامر المطور
-    else if (data === "download_db" && userId.toString() === config.adminId.toString()) {
+    else if (data === "download_db" && config.adminIds.some(id => id.toString() === userId.toString())) {
         bot.sendDocument(chatId, './db.json', { caption: "📁 تفضل، هذه أحدث نسخة من قاعدة البيانات الخاصة بالمستخدمين." });
     }
-    else if (data === "broadcast" && userId.toString() === config.adminId.toString()) {
+    else if (data === "broadcast" && config.adminIds.some(id => id.toString() === userId.toString())) {
         adminState[userId] = "WAITING_FOR_BROADCAST_MSG";
         bot.sendMessage(chatId, "📢 قم بإرسال الرسالة الآن (نص، صورة، فيديو، الخ..). سيتم إرسالها لجميع مستخدمي البوت.\nلإلغاء الإذاعة أرسل كلمة الغاء", { parse_mode: "Markdown" });
     }
-    else if (data === "toggle_fake" && userId.toString() === config.adminId.toString()) {
+    else if (data === "toggle_fake" && config.adminIds.some(id => id.toString() === userId.toString())) {
         const isEnabled = toggleFakeMessages();
         
         // تحديث أزرار الرسالة الحالية لتغيير لون الزر
@@ -303,19 +305,20 @@ bot.on('callback_query', (query) => {
             [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
-        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db" }]);
-        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast" }]);
+        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
+        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
         
         const fakeBtnText = isEnabled ? "🔴 إيقاف الرسائل الوهمية" : "🟢 تشغيل الرسائل الوهمية";
-        keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
-        keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval" }]);
+        const fakeBtnStyle = isEnabled ? 'success' : 'danger';
+        keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake", style: fakeBtnStyle }]);
+        keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval", style: 'danger' }]);
         
         bot.editMessageReplyMarkup({ inline_keyboard: keyboard }, {
             chat_id: chatId,
             message_id: messageId
         }).catch(()=>{});
     }
-    else if (data === "edit_fake_interval" && userId.toString() === config.adminId.toString()) {
+    else if (data === "edit_fake_interval" && config.adminIds.some(id => id.toString() === userId.toString())) {
         adminState[userId] = "WAITING_FOR_FAKE_INTERVAL";
         bot.sendMessage(chatId, "⏱ ارسل الوقت بالثواني (مثال: 60)\nلإلغاء التعديل أرسل كلمة الغاء");
     }
@@ -476,15 +479,24 @@ bot.on('message', async (msg) => {
 
             // تسليم الجروب السري إذا تم إكمال الهدف
             if (updatedUser.addedCount >= config.targetMembers && !updatedUser.reachedTarget) {
-                const rewardMsg = "🎉 **ألف مبروك!** لقد أكملت إضافة " + config.targetMembers + " عضو.\n\nتفضل رابط الجروب السري الخاص بك:\n" + config.secretGroupLink + "\n\nيُرجى عدم مشاركة الرابط مع أحد.";
+                const rewardMsg = "🎉 **ألف مبروك!** لقد أكملت إضافة " + config.targetMembers + " عضو.\n\nاضغط على الزر بالأسفل للدخول إلى الجروب السري:\n\nيُرجى عدم مشاركة الرابط مع أحد.";
+                
+                const rewardKeyboard = {
+                    inline_keyboard: [
+                        [{ text: "🔓 الدخول للجروب السري", url: config.secretGroupLink, style: 'primary' }]
+                    ]
+                };
 
-                bot.sendMessage(adderId, rewardMsg, { parse_mode: "Markdown" })
-                    .then(() => {
-                        db.setTargetReached(adderId);
-                    })
-                    .catch((err) => {
-                        console.log("فشل إرسال الرابط السري للمستخدم " + adderId + "، ربما لم يقم بتشغيل البوت في الخاص.");
-                    });
+                bot.sendMessage(adderId, rewardMsg, { 
+                    parse_mode: "Markdown",
+                    reply_markup: rewardKeyboard
+                })
+                .then(() => {
+                    db.setTargetReached(adderId);
+                })
+                .catch((err) => {
+                    console.log("فشل إرسال الرابط السري للمستخدم " + adderId + "، ربما لم يقم بتشغيل البوت في الخاص.");
+                });
             }
         }
     }
