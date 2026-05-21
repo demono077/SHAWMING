@@ -6,12 +6,14 @@ module.exports = {
     adminId: 7715555599,
     
     // يوزر جروب الإضافة (بدون علامة @)
-    // ملاحظة: تأكد أن هذا يوزر لجروب حقيقي وليس بوت
     addGroupUsername: "SHAW1236", 
     
     // رابط الجروب السري
-    secretGroupLink: "[https://t.me/+Au-wTZaUQdU4MGFk](https://t.me/+Au-wTZaUQdU4MGFk)",
+    secretGroupLink: "https://t.me/+Au-wTZaUQdU4MGFk",
     
     // عدد الأعضاء المطلوب إضافتهم
-    targetMembers: 50
+    targetMembers: 50,
+
+    // القناة الإجبارية الإضافية التي يجب على الأعضاء الاشتراك بها أولاً
+    requiredChannel: "ZXAZAZ"
 };
