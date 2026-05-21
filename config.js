@@ -9,7 +9,7 @@ module.exports = {
     group1: "SHAW1236", 
     
     // يوزر الجروب الثاني (الذي يتم فيه إضافة الأعضاء) - بدون علامة @
-    group2: "AJamm21",
+    group2: "tgarba2dsl",
     
     // رابط الجروب السري (الذي يحصل عليه بعد إكمال 50 عضو)
     secretGroupLink: "https://t.me/+Au-wTZaUQdU4MGFk",
