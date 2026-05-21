@@ -12,26 +12,6 @@ let adminState = {};
 // خدعة برمجية لمنع تلف الروابط أثناء النسخ واللصق
 const tgLink = "https://" + "t.me/";
 
-// دالة لفحص الاشتراك في القناة الإجبارية وتحديد رابط الزر المناسب
-async function checkSubscriptionAndGetLink(userId) {
-    try {
-        const channelUsername = config.requiredChannel.replace('@', '');
-        const member = await bot.getChatMember("@" + channelUsername, userId);
-        const isSubscribed = ['member', 'administrator', 'creator'].includes(member.status);
-        
-        if (isSubscribed) {
-            // إذا كان مشتركاً، يتم تحويله لملف الجروب الشخصي مباشرة لإضافة الأعضاء (حل مشكلة الاهتزاز)
-            return "tg://resolve?domain=" + config.addGroupUsername;
-        } else {
-            // إذا لم يكن مشتركاً، يتم توجيهه للاشتراك بالقناة أولاً
-            return "https://t.me/" + channelUsername;
-        }
-    } catch (err) {
-        // في حال حدوث أي خطأ (مثلاً البوت ليس مشرفاً بالقناة)، يتم التوجيه لملف الجروب كخيار احتياطي آمن
-        return "tg://resolve?domain=" + config.addGroupUsername;
-    }
-}
-
 // دالة لمعالجة رسالة /start
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
@@ -46,13 +26,13 @@ bot.onText(/\/start/, (msg) => {
 
     const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
 
-    // الأزرار الأساسية للمستخدم مع جعل الأزرار حمراء
+    // الأزرار الأساسية (توجه المستخدم للجروب الأول كبداية)
     let keyboard = [
-        [{ text: "➕ إضافة أصدقائي", url: tgLink + config.addGroupUsername, style: 'danger' }],
+        [{ text: "➕ إضافة أصدقائي", url: tgLink + config.group1, style: 'danger' }],
         [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
     ];
 
-    // إضافة أزرار المطور إذا كان المستخدم هو المطور
+    // إضافة أزرار المطور
     if (userId.toString() === config.adminId.toString()) {
         keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
         keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
@@ -92,7 +72,7 @@ bot.on('callback_query', (query) => {
     else if (data === "back_to_start") {
         const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: tgLink + config.addGroupUsername, style: 'danger' }],
+            [{ text: "➕ إضافة أصدقائي", url: tgLink + config.group1, style: 'danger' }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
         if (userId.toString() === config.adminId.toString()) {
@@ -123,7 +103,6 @@ bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
 
-    // التحقق مما إذا كان المطور في وضع الإذاعة
     if (adminState[userId] === "WAITING_FOR_BROADCAST_MSG") {
         if (msg.text && msg.text.includes("الغاء")) {
             adminState[userId] = null;
@@ -134,14 +113,13 @@ bot.on('message', async (msg) => {
         const userIds = Object.keys(users);
         
         bot.sendMessage(chatId, "⏳ جاري إرسال الإذاعة إلى " + userIds.length + " مستخدم...");
-        adminState[userId] = null; // إنهاء حالة الإذاعة
+        adminState[userId] = null; 
 
         let successCount = 0;
         let failCount = 0;
 
         for (const id of userIds) {
             try {
-                // نستخدم copyMessage لنسخ الرسالة كما هي
                 await bot.copyMessage(id, chatId, msg.message_id);
                 successCount++;
             } catch (err) {
@@ -153,11 +131,21 @@ bot.on('message', async (msg) => {
     }
 });
 
-// مراقبة الجروب لمعرفة من قام بالانضمام أو إضافة أعضاء
-bot.on('message', async (msg) => {
+// مراقبة الجروبات لمعرفة من قام بالانضمام أو إضافة أعضاء
+bot.on('message', (msg) => {
     if (msg.chat.type !== 'private' && msg.new_chat_members) {
         const adderId = msg.from.id;
         const adderName = msg.from.first_name;
+        
+        // تحديد مسار الزر بناءً على اسم الجروب الذي تم إرسال الرسالة فيه
+        let buttonUrl = "";
+        if (msg.chat.username && msg.chat.username.toLowerCase() === config.group1.toLowerCase()) {
+            // لو كنا في الجروب الأول، الزر يودي للجروب الثاني
+            buttonUrl = tgLink + config.group2;
+        } else {
+            // لو كنا في الجروب الثاني (أو أي جروب آخر)، الزر يفتح الملف الشخصي للجروب الثاني للإضافة
+            buttonUrl = "tg://resolve?domain=" + config.group2;
+        }
 
         db.getUser(adderId, adderName);
 
@@ -179,9 +167,6 @@ bot.on('message', async (msg) => {
 
             const welcomeGroupMsg = "⚠️ المستخدم **" + adderName + "** ضاف 0 عضو جديد\n✅ المجموع الحالي: " + user.addedCount + " عضو\n♻️ لازم توصل لـ " + config.targetMembers + " عضو علشان تاخد السري فوراً\n🔥 الفاضل: " + remaining + " عضو";
 
-            // فحص الاشتراك للحصول على الرابط المناسب (جروب أو قناة)
-            const buttonUrl = await checkSubscriptionAndGetLink(adderId);
-
             bot.sendMessage(msg.chat.id, welcomeGroupMsg, {
                 parse_mode: "Markdown",
                 reply_markup: {
@@ -194,13 +179,11 @@ bot.on('message', async (msg) => {
 
         // 2. إذا قام المستخدم بإضافة أعضاء آخرين
         if (addedRealMembersCount > 0) {
+            // ملاحظة: يتم احتساب النقاط بغض النظر عن الجروب الذي يضيف فيه طالما البوت أدمن، لكن المنطق يوجههم للجروب الثاني
             const updatedUser = db.addPoints(adderId, adderName, addedRealMembersCount);
             const remaining = Math.max(0, config.targetMembers - updatedUser.addedCount);
 
             const groupMsg = "⚠️ المستخدم **" + adderName + "** ضاف " + addedRealMembersCount + " عضو جديد\n✅ المجموع الحالي: " + updatedUser.addedCount + " عضو\n♻️ لازم توصل لـ " + config.targetMembers + " عضو علشان تاخد السري فوراً\n🔥 الفاضل: " + remaining + " عضو";
-
-            // فحص الاشتراك للحصول على الرابط المناسب (جروب أو قناة)
-            const buttonUrl = await checkSubscriptionAndGetLink(adderId);
 
             bot.sendMessage(msg.chat.id, groupMsg, {
                 parse_mode: "Markdown",
