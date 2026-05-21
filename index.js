@@ -22,11 +22,12 @@ bot.onText(/\/start/, (msg) => {
     // تسجيل المستخدم في قاعدة البيانات
     db.getUser(userId, fullName);
 
-    const welcomeMessage = `أهلاً يا **${fullName}**\n\n🎯 المطلوب لدخول الجروب السري: ${config.targetMembers} عضو\n\nبالتوفيق للجميع ❤️`;
+    // استخدام علامات التنصيص المزدوجة لتفادي أخطاء النصوص العربية
+    const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
 
     // الأزرار الأساسية للمستخدم
     let keyboard = [
-        [{ text: "➕ إضافة أصدقائي", url: `https://t.me/${config.addGroupUsername}` }],
+        [{ text: "➕ إضافة أصدقائي", url: "https://t.me/" + config.addGroupUsername }],
         [{ text: "📊 إحصائياتي", callback_data: "my_stats" }]
     ];
 
@@ -56,7 +57,7 @@ bot.on('callback_query', (query) => {
         const user = db.getUser(userId, fullName);
         const remaining = Math.max(0, config.targetMembers - user.addedCount);
         
-        const statsMsg = `📊 **إحصائياتك الحالية:**\n\n✅ عدد إضافاتك: ${user.addedCount}\n🎯 الهدف: ${config.targetMembers}\n🔥 المتبقي لك: ${remaining} عضو\n\n🚀 استمر في الإضافة لفتح الرابط السري!`;
+        const statsMsg = "📊 **إحصائياتك الحالية:**\n\n✅ عدد إضافاتك: " + user.addedCount + "\n🎯 الهدف: " + config.targetMembers + "\n🔥 المتبقي لك: " + remaining + " عضو\n\n🚀 استمر في الإضافة لفتح الرابط السري!";
         
         bot.editMessageText(statsMsg, {
             chat_id: chatId,
@@ -68,9 +69,9 @@ bot.on('callback_query', (query) => {
         });
     } 
     else if (data === "back_to_start") {
-        const welcomeMessage = `أهلاً يا **${fullName}**\n\n🎯 المطلوب لدخول الجروب السري: ${config.targetMembers} عضو\n\nبالتوفيق للجميع ❤️`;
+        const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: `https://t.me/${config.addGroupUsername}` }],
+            [{ text: "➕ إضافة أصدقائي", url: "https://t.me/" + config.addGroupUsername }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats" }]
         ];
         if (userId.toString() === config.adminId.toString()) {
@@ -90,7 +91,7 @@ bot.on('callback_query', (query) => {
     }
     else if (data === "broadcast" && userId.toString() === config.adminId.toString()) {
         adminState[userId] = "WAITING_FOR_BROADCAST_MSG";
-        bot.sendMessage(chatId, "📢 قم بإرسال الرسالة الآن (نص، صورة، فيديو، الخ..). سيتم إرسالها لجميع مستخدمين البوت.\nلإلغاء الإذاعة أرسل `الغاء`.", { parse_mode: "Markdown" });
+        bot.sendMessage(chatId, "📢 قم بإرسال الرسالة الآن (نص، صورة، فيديو، الخ..). سيتم إرسالها لجميع مستخدمين البوت.\nلإلغاء الإذاعة أرسل كلمة الغاء", { parse_mode: "Markdown" });
     }
     
     bot.answerCallbackQuery(query.id);
@@ -111,7 +112,7 @@ bot.on('message', async (msg) => {
         const users = db.getAllUsers();
         const userIds = Object.keys(users);
         
-        bot.sendMessage(chatId, `⏳ جاري إرسال الإذاعة إلى ${userIds.length} مستخدم...`);
+        bot.sendMessage(chatId, "⏳ جاري إرسال الإذاعة إلى " + userIds.length + " مستخدم...");
         adminState[userId] = null; // إنهاء حالة الإذاعة
 
         let successCount = 0;
@@ -119,26 +120,24 @@ bot.on('message', async (msg) => {
 
         for (const id of userIds) {
             try {
-                // نستخدم copyMessage لنسخ الرسالة كما هي (سواء كانت صورة، فيديو، نص)
+                // نستخدم copyMessage لنسخ الرسالة كما هي
                 await bot.copyMessage(id, chatId, msg.message_id);
                 successCount++;
             } catch (err) {
-                failCount++; // المستخدم ربما قام بحظر البوت
+                failCount++; 
             }
         }
 
-        bot.sendMessage(chatId, `✅ **اكتملت الإذاعة!**\n\nنجح الإرسال لـ: ${successCount}\nفشل الإرسال لـ: ${failCount} (حظروا البوت)`, { parse_mode: "Markdown" });
+        bot.sendMessage(chatId, "✅ **اكتملت الإذاعة!**\n\nنجح الإرسال لـ: " + successCount + "\nفشل الإرسال لـ: " + failCount + " (حظروا البوت)", { parse_mode: "Markdown" });
     }
 });
 
 // مراقبة الجروب لمعرفة من قام بالانضمام أو إضافة أعضاء
 bot.on('message', (msg) => {
-    // التأكد أن الرسالة في جروب وتحتوي على أعضاء جدد
     if (msg.chat.type !== 'private' && msg.new_chat_members) {
         const adderId = msg.from.id;
         const adderName = msg.from.first_name;
 
-        // التأكد من تسجيل المستخدم في قاعدة البيانات بمجرد تفاعله
         db.getUser(adderId, adderName);
 
         let addedRealMembersCount = 0;
@@ -146,60 +145,52 @@ bot.on('message', (msg) => {
 
         msg.new_chat_members.forEach(member => {
             if (member.id === adderId) {
-                // المستخدم انضم بنفسه للجروب
                 selfJoin = true;
             } else if (!member.is_bot) {
-                // المستخدم قام بإضافة أعضاء حقيقيين (وليس بوتات)
                 addedRealMembersCount++;
             }
         });
 
-        // 1. إذا كان المستخدم قد دخل الجروب بنفسه (عضو جديد يرى رسالة البدء)
         if (selfJoin) {
             const user = db.getUser(adderId, adderName);
             const remaining = Math.max(0, config.targetMembers - user.addedCount);
 
-            const welcomeGroupMsg = `⚠️ المستخدم **${adderName}** ضاف 0 عضو جديد\n✅ المجموع الحالي: ${user.addedCount} عضو\n♻️ لازم توصل لـ ${config.targetMembers} عضو علشان تاخد السري فوراً\n🔥 الفاضل: ${remaining} عضو`;
+            const welcomeGroupMsg = "⚠️ المستخدم **" + adderName + "** ضاف 0 عضو جديد\n✅ المجموع الحالي: " + user.addedCount + " عضو\n♻️ لازم توصل لـ " + config.targetMembers + " عضو علشان تاخد السري فوراً\n🔥 الفاضل: " + remaining + " عضو";
 
             bot.sendMessage(msg.chat.id, welcomeGroupMsg, {
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "➕ اضف اعضاء", url: `https://t.me/${config.addGroupUsername}` }]
+                        [{ text: "➕ اضف اعضاء", url: "https://t.me/" + config.addGroupUsername }]
                     ]
                 }
             });
         }
 
-        // 2. إذا كان المستخدم قد قام بإضافة أشخاص آخرين بالفعل
         if (addedRealMembersCount > 0) {
-            // تحديث بيانات الشخص الذي أضاف الأعضاء
             const updatedUser = db.addPoints(adderId, adderName, addedRealMembersCount);
             const remaining = Math.max(0, config.targetMembers - updatedUser.addedCount);
 
-            const groupMsg = `⚠️ المستخدم **${adderName}** ضاف ${addedRealMembersCount} عضو جديد\n✅ المجموع الحالي: ${updatedUser.addedCount} عضو\n♻️ لازم توصل لـ ${config.targetMembers} عضو علشان تاخد السري فوراً\n🔥 الفاضل: ${remaining} عضو`;
+            const groupMsg = "⚠️ المستخدم **" + adderName + "** ضاف " + addedRealMembersCount + " عضو جديد\n✅ المجموع الحالي: " + updatedUser.addedCount + " عضو\n♻️ لازم توصل لـ " + config.targetMembers + " عضو علشان تاخد السري فوراً\n🔥 الفاضل: " + remaining + " عضو";
 
             bot.sendMessage(msg.chat.id, groupMsg, {
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "➕ اضف اعضاء", url: `https://t.me/${config.addGroupUsername}` }]
+                        [{ text: "➕ اضف اعضاء", url: "https://t.me/" + config.addGroupUsername }]
                     ]
                 }
             });
 
-            // التحقق مما إذا كان المستخدم وصل للهدف ولم يستلم الرابط بعد
             if (updatedUser.addedCount >= config.targetMembers && !updatedUser.reachedTarget) {
-                // إرسال الرابط في الخاص
-                const rewardMsg = `🎉 **ألف مبروك!** لقد أكملت إضافة ${config.targetMembers} عضو.\n\nتفضل رابط الجروب السري الخاص بك:\n${config.secretGroupLink}\n\nيُرجى عدم مشاركة الرابط مع أحد.`;
+                const rewardMsg = "🎉 **ألف مبروك!** لقد أكملت إضافة " + config.targetMembers + " عضو.\n\nتفضل رابط الجروب السري الخاص بك:\n" + config.secretGroupLink + "\n\nيُرجى عدم مشاركة الرابط مع أحد.";
                 
                 bot.sendMessage(adderId, rewardMsg, { parse_mode: "Markdown" })
                     .then(() => {
-                        // تحديث الحالة بأنه استلم الرابط لكي لا يرسله البوت مرة أخرى
                         db.setTargetReached(adderId);
                     })
                     .catch((err) => {
-                        console.log(`فشل إرسال الرابط السري للمستخدم ${adderId}، ربما لم يقم بتشغيل البوت في الخاص.`);
+                        console.log("فشل إرسال الرابط السري للمستخدم " + adderId + "، ربما لم يقم بتشغيل البوت في الخاص.");
                     });
             }
         }
@@ -207,5 +198,6 @@ bot.on('message', (msg) => {
 });
 
 console.log("✅ البوت يعمل بنجاح...");
+
 
 ```
