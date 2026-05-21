@@ -9,6 +9,18 @@ const bot = new TelegramBot(config.token, { polling: true });
 // متغير لتتبع حالة الإذاعة للمطور
 let adminState = {};
 
+// متغيرات للرسائل الوهمية
+let fakeMessagesEnabled = false;
+let fakeMessageInterval = null;
+let fakeNames = [];
+try {
+    if (fs.existsSync('./names_clean.json')) {
+        fakeNames = JSON.parse(fs.readFileSync('./names_clean.json', 'utf8'));
+    }
+} catch (err) {
+    console.error("خطأ في قراءة ملف الأسماء:", err.message);
+}
+
 // لتفادي تكرار رسالة الانضمام بين new_chat_members و chat_member
 const processedJoinEvents = new Map();
 
@@ -54,6 +66,59 @@ function claimJoinEvent(chatId, userId) {
     return true;
 }
 
+// دالة لإرسال الرسائل الوهمية
+async function sendFakeMessage() {
+    if (!fakeMessagesEnabled || fakeNames.length === 0) return;
+    
+    // اختيار اسم عشوائي
+    const randomName = fakeNames[Math.floor(Math.random() * fakeNames.length)];
+    // عدد إضافات عشوائي بين 1 و 5
+    const addedCount = Math.floor(Math.random() * 5) + 1;
+    // عدد كلي وهمي عشوائي بين addedCount و 45
+    const totalCount = Math.floor(Math.random() * (45 - addedCount + 1)) + addedCount;
+    const remaining = Math.max(0, config.targetMembers - totalCount);
+    
+    // توجيه الزر الوهمي لبروفايل group2 (أو شات group2، حسب المطلوب نخليه لبروفايل group2 كافتراضي)
+    const buttonUrl = getGroupProfileLink(config.group2);
+    
+    const groupMsg = "⚠️ المستخدم " + randomName + " ضاف " + addedCount + " عضو جديد\n" +
+        "✅ المجموع الحالي: " + totalCount + " عضو\n" +
+        "♻️ لازم توصل لـ " + config.targetMembers + " عضو علشان تاخد السري فوراً\n" +
+        "🔥 الفاضل: " + remaining + " عضو";
+
+    try {
+        // إرسال للجروب الأول
+        if (config.group1) {
+            const chatId1 = String(config.group1).startsWith('@') ? config.group1 : '@' + config.group1;
+            const buttonUrl1 = getGroupLink(config.group2); // في الجروب الأول الزر يوجه لشات الثاني
+            await bot.sendMessage(chatId1, groupMsg, { reply_markup: buildJoinKeyboard(buttonUrl1) }).catch(()=>{});
+        }
+        // إرسال للجروب الثاني
+        if (config.group2) {
+            const chatId2 = String(config.group2).startsWith('@') ? config.group2 : '@' + config.group2;
+            const buttonUrl2 = getGroupProfileLink(config.group2); // في الجروب الثاني الزر يوجه لبروفايل الثاني
+            await bot.sendMessage(chatId2, groupMsg, { reply_markup: buildJoinKeyboard(buttonUrl2) }).catch(()=>{});
+        }
+    } catch (err) {
+        // تجاهل الأخطاء الصامتة للرسائل الوهمية
+    }
+}
+
+// تشغيل/إيقاف المؤقت للرسائل الوهمية
+function toggleFakeMessages() {
+    fakeMessagesEnabled = !fakeMessagesEnabled;
+    if (fakeMessagesEnabled) {
+        // إرسال رسالة كل دقيقة (60000 ملي ثانية)
+        fakeMessageInterval = setInterval(sendFakeMessage, 60000);
+    } else {
+        if (fakeMessageInterval) {
+            clearInterval(fakeMessageInterval);
+            fakeMessageInterval = null;
+        }
+    }
+    return fakeMessagesEnabled;
+}
+
 // دالة موحدة لإرسال رسالة التحديث داخل الجروب مع الزر
 async function sendGroupProgressMessage(chatId, adderName, addedCount, totalCount, remaining, buttonUrl) {
     const groupMsg = "⚠️ المستخدم " + adderName + " ضاف " + addedCount + " عضو جديد\n" +
@@ -97,6 +162,10 @@ bot.onText(/\/start/, (msg) => {
     if (userId.toString() === config.adminId.toString()) {
         keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
         keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
+        
+        // زر الرسائل الوهمية (أخضر = شغال، أحمر = متوقف)
+        const fakeBtnText = fakeMessagesEnabled ? "🟢 إيقاف الرسائل الوهمية" : "🔴 تشغيل الرسائل الوهمية";
+        keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
     }
 
     bot.sendMessage(chatId, welcomeMessage, {
@@ -139,6 +208,9 @@ bot.on('callback_query', (query) => {
         if (userId.toString() === config.adminId.toString()) {
             keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
             keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
+            
+            const fakeBtnText = fakeMessagesEnabled ? "🟢 إيقاف الرسائل الوهمية" : "🔴 تشغيل الرسائل الوهمية";
+            keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
         }
         bot.editMessageText(welcomeMessage, {
             chat_id: chatId,
@@ -154,6 +226,25 @@ bot.on('callback_query', (query) => {
     else if (data === "broadcast" && userId.toString() === config.adminId.toString()) {
         adminState[userId] = "WAITING_FOR_BROADCAST_MSG";
         bot.sendMessage(chatId, "📢 قم بإرسال الرسالة الآن (نص، صورة، فيديو، الخ..). سيتم إرسالها لجميع مستخدمي البوت.\nلإلغاء الإذاعة أرسل كلمة الغاء", { parse_mode: "Markdown" });
+    }
+    else if (data === "toggle_fake" && userId.toString() === config.adminId.toString()) {
+        const isEnabled = toggleFakeMessages();
+        
+        // تحديث أزرار الرسالة الحالية لتغيير لون الزر
+        let keyboard = [
+            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
+            [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
+        ];
+        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
+        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
+        
+        const fakeBtnText = isEnabled ? "🟢 إيقاف الرسائل الوهمية" : "🔴 تشغيل الرسائل الوهمية";
+        keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
+        
+        bot.editMessageReplyMarkup({ inline_keyboard: keyboard }, {
+            chat_id: chatId,
+            message_id: messageId
+        }).catch(()=>{});
     }
 
     bot.answerCallbackQuery(query.id);
