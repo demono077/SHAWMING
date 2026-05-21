@@ -28,7 +28,7 @@ bot.onText(/\/start/, (msg) => {
 
     // الأزرار الأساسية (توجه المستخدم للجروب الأول كبداية)
     let keyboard = [
-        [{ text: "➕ إضافة أصدقائي", url: tgLink + config.group1, style: 'danger' }],
+        [{ text: "➕ إضافة أصدقائي", url: tgLink + config.group1.replace('@', ''), style: 'danger' }],
         [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
     ];
 
@@ -43,7 +43,7 @@ bot.onText(/\/start/, (msg) => {
         reply_markup: {
             inline_keyboard: keyboard
         }
-    });
+    }).catch(err => console.error("خطأ في إرسال رسالة الترحيب:", err.message));
 });
 
 // معالجة الضغط على الأزرار (Callback Queries)
@@ -72,7 +72,7 @@ bot.on('callback_query', (query) => {
     else if (data === "back_to_start") {
         const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: tgLink + config.group1, style: 'danger' }],
+            [{ text: "➕ إضافة أصدقائي", url: tgLink + config.group1.replace('@', ''), style: 'danger' }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
         if (userId.toString() === config.adminId.toString()) {
@@ -103,7 +103,7 @@ bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
 
-    if (adminState[userId] === "WAITING_FOR_BROADCAST_MSG") {
+    if (adminState[userId] === "WAITING_FOR_BROADCAST_MSG" && msg.chat.type === 'private') {
         if (msg.text && msg.text.includes("الغاء")) {
             adminState[userId] = null;
             return bot.sendMessage(chatId, "تم إلغاء الإذاعة بنجاح.");
@@ -137,15 +137,9 @@ bot.on('message', (msg) => {
         const adderId = msg.from.id;
         const adderName = msg.from.first_name;
         
-        // تحديد مسار الزر بناءً على اسم الجروب الذي تم إرسال الرسالة فيه
-        let buttonUrl = "";
-        if (msg.chat.username && msg.chat.username.toLowerCase() === config.group1.toLowerCase()) {
-            // لو كنا في الجروب الأول، الزر يودي للجروب الثاني
-            buttonUrl = tgLink + config.group2;
-        } else {
-            // لو كنا في الجروب الثاني (أو أي جروب آخر)، الزر يفتح الملف الشخصي للجروب الثاني للإضافة
-            buttonUrl = "tg://resolve?domain=" + config.group2;
-        }
+        // جميع الأزرار داخل الجروبات ستوجه المستخدم للجروب الثاني الخاص بالإضافة
+        const g2 = config.group2.replace('@', '');
+        const buttonUrl = tgLink + g2;
 
         db.getUser(adderId, adderName);
 
@@ -160,7 +154,7 @@ bot.on('message', (msg) => {
             }
         });
 
-        // 1. إذا انضم المستخدم بنفسه
+        // 1. إذا انضم المستخدم بنفسه لأي من الجروبين
         if (selfJoin) {
             const user = db.getUser(adderId, adderName);
             const remaining = Math.max(0, config.targetMembers - user.addedCount);
@@ -174,12 +168,11 @@ bot.on('message', (msg) => {
                         [{ text: "➕ اضف اعضاء", url: buttonUrl, style: 'danger' }]
                     ]
                 }
-            });
+            }).catch(err => console.log("خطأ في إرسال الرسالة بالجروب:", err.message));
         }
 
         // 2. إذا قام المستخدم بإضافة أعضاء آخرين
         if (addedRealMembersCount > 0) {
-            // ملاحظة: يتم احتساب النقاط بغض النظر عن الجروب الذي يضيف فيه طالما البوت أدمن، لكن المنطق يوجههم للجروب الثاني
             const updatedUser = db.addPoints(adderId, adderName, addedRealMembersCount);
             const remaining = Math.max(0, config.targetMembers - updatedUser.addedCount);
 
@@ -192,7 +185,7 @@ bot.on('message', (msg) => {
                         [{ text: "➕ اضف اعضاء", url: buttonUrl, style: 'danger' }]
                     ]
                 }
-            });
+            }).catch(err => console.log("خطأ في إرسال الرسالة بالجروب:", err.message));
 
             // تسليم الجروب السري إذا تم إكمال الهدف
             if (updatedUser.addedCount >= config.targetMembers && !updatedUser.reachedTarget) {
