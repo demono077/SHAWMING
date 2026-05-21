@@ -12,6 +12,26 @@ let adminState = {};
 // خدعة برمجية لمنع تلف الروابط أثناء النسخ واللصق
 const tgLink = "https://" + "t.me/";
 
+// دالة لفحص الاشتراك في القناة الإجبارية وتحديد رابط الزر المناسب
+async function checkSubscriptionAndGetLink(userId) {
+    try {
+        const channelUsername = config.requiredChannel.replace('@', '');
+        const member = await bot.getChatMember("@" + channelUsername, userId);
+        const isSubscribed = ['member', 'administrator', 'creator'].includes(member.status);
+        
+        if (isSubscribed) {
+            // إذا كان مشتركاً، يتم تحويله لملف الجروب الشخصي مباشرة لإضافة الأعضاء (حل مشكلة الاهتزاز)
+            return "tg://resolve?domain=" + config.addGroupUsername;
+        } else {
+            // إذا لم يكن مشتركاً، يتم توجيهه للاشتراك بالقناة أولاً
+            return "https://t.me/" + channelUsername;
+        }
+    } catch (err) {
+        // في حال حدوث أي خطأ (مثلاً البوت ليس مشرفاً بالقناة)، يتم التوجيه لملف الجروب كخيار احتياطي آمن
+        return "tg://resolve?domain=" + config.addGroupUsername;
+    }
+}
+
 // دالة لمعالجة رسالة /start
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
@@ -26,7 +46,7 @@ bot.onText(/\/start/, (msg) => {
 
     const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
 
-    // الأزرار الأساسية للمستخدم مع إضافة style: 'danger'
+    // الأزرار الأساسية للمستخدم مع جعل الأزرار حمراء
     let keyboard = [
         [{ text: "➕ إضافة أصدقائي", url: tgLink + config.addGroupUsername, style: 'danger' }],
         [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
@@ -134,7 +154,7 @@ bot.on('message', async (msg) => {
 });
 
 // مراقبة الجروب لمعرفة من قام بالانضمام أو إضافة أعضاء
-bot.on('message', (msg) => {
+bot.on('message', async (msg) => {
     if (msg.chat.type !== 'private' && msg.new_chat_members) {
         const adderId = msg.from.id;
         const adderName = msg.from.first_name;
@@ -152,37 +172,46 @@ bot.on('message', (msg) => {
             }
         });
 
+        // 1. إذا انضم المستخدم بنفسه
         if (selfJoin) {
             const user = db.getUser(adderId, adderName);
             const remaining = Math.max(0, config.targetMembers - user.addedCount);
 
             const welcomeGroupMsg = "⚠️ المستخدم **" + adderName + "** ضاف 0 عضو جديد\n✅ المجموع الحالي: " + user.addedCount + " عضو\n♻️ لازم توصل لـ " + config.targetMembers + " عضو علشان تاخد السري فوراً\n🔥 الفاضل: " + remaining + " عضو";
 
+            // فحص الاشتراك للحصول على الرابط المناسب (جروب أو قناة)
+            const buttonUrl = await checkSubscriptionAndGetLink(adderId);
+
             bot.sendMessage(msg.chat.id, welcomeGroupMsg, {
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "➕ اضف اعضاء", url: tgLink + config.addGroupUsername, style: 'danger' }]
+                        [{ text: "➕ اضف اعضاء", url: buttonUrl, style: 'danger' }]
                     ]
                 }
             });
         }
 
+        // 2. إذا قام المستخدم بإضافة أعضاء آخرين
         if (addedRealMembersCount > 0) {
             const updatedUser = db.addPoints(adderId, adderName, addedRealMembersCount);
             const remaining = Math.max(0, config.targetMembers - updatedUser.addedCount);
 
             const groupMsg = "⚠️ المستخدم **" + adderName + "** ضاف " + addedRealMembersCount + " عضو جديد\n✅ المجموع الحالي: " + updatedUser.addedCount + " عضو\n♻️ لازم توصل لـ " + config.targetMembers + " عضو علشان تاخد السري فوراً\n🔥 الفاضل: " + remaining + " عضو";
 
+            // فحص الاشتراك للحصول على الرابط المناسب (جروب أو قناة)
+            const buttonUrl = await checkSubscriptionAndGetLink(adderId);
+
             bot.sendMessage(msg.chat.id, groupMsg, {
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "➕ اضف اعضاء", url: tgLink + config.addGroupUsername, style: 'danger' }]
+                        [{ text: "➕ اضف اعضاء", url: buttonUrl, style: 'danger' }]
                     ]
                 }
             });
 
+            // تسليم الجروب السري إذا تم إكمال الهدف
             if (updatedUser.addedCount >= config.targetMembers && !updatedUser.reachedTarget) {
                 const rewardMsg = "🎉 **ألف مبروك!** لقد أكملت إضافة " + config.targetMembers + " عضو.\n\nتفضل رابط الجروب السري الخاص بك:\n" + config.secretGroupLink + "\n\nيُرجى عدم مشاركة الرابط مع أحد.";
                 
