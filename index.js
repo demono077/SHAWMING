@@ -24,6 +24,62 @@ try {
 // لتفادي تكرار رسالة الانضمام بين new_chat_members و chat_member
 const processedJoinEvents = new Map();
 
+// متغير لتوقيت الرسائل الوهمية بالثواني (الافتراضي 60)
+let fakeMessageIntervalSeconds = 60;
+
+// دالة مساعدة لتحويل تنسيقات رسالة التليجرام إلى HTML لدعم الإذاعة
+function convertBotMessageToHtml(text, entities) {
+    if (!text) return '';
+    if (!entities || entities.length === 0) {
+        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    let html = '';
+    const tags = {};
+    for (const e of entities) {
+        if (!tags[e.offset]) tags[e.offset] = { start: [], end: [] };
+        if (!tags[e.offset + e.length]) tags[e.offset + e.length] = { start: [], end: [] };
+
+        let startTag = '', endTag = '';
+        switch (e.type) {
+            case 'bold': startTag = '<b>'; endTag = '</b>'; break;
+            case 'italic': startTag = '<i>'; endTag = '</i>'; break;
+            case 'underline': startTag = '<u>'; endTag = '</u>'; break;
+            case 'strikethrough': startTag = '<s>'; endTag = '</s>'; break;
+            case 'spoiler': startTag = '<tg-spoiler>'; endTag = '</tg-spoiler>'; break;
+            case 'code': startTag = '<code>'; endTag = '</code>'; break;
+            case 'pre': 
+                startTag = e.language ? `<pre><code class="language-${e.language}">` : '<pre>'; 
+                endTag = e.language ? '</code></pre>' : '</pre>'; 
+                break;
+            case 'text_link': startTag = `<a href="${e.url}">`; endTag = '</a>'; break;
+            case 'text_mention': startTag = `<a href="tg://user?id=${e.user.id}">`; endTag = '</a>'; break;
+            case 'blockquote': startTag = '<blockquote>'; endTag = '</blockquote>'; break;
+        }
+        if (startTag) {
+            tags[e.offset].start.push(startTag);
+            tags[e.offset + e.length].end.unshift(endTag); 
+        }
+    }
+
+    for (let i = 0; i < text.length; i++) {
+        if (tags[i]) {
+            html += tags[i].end.join('');
+            html += tags[i].start.join('');
+        }
+        const char = text[i];
+        if (char === '&') html += '&amp;';
+        else if (char === '<') html += '&lt;';
+        else if (char === '>') html += '&gt;';
+        else html += char;
+    }
+    if (tags[text.length]) {
+        html += tags[text.length].end.join('');
+    }
+
+    return html;
+}
+
 // خدعة برمجية لمنع تلف الروابط أثناء النسخ واللصق
 const tgLink = "https://" + "t.me/";
 
@@ -66,56 +122,63 @@ function claimJoinEvent(chatId, userId) {
     return true;
 }
 
+// دالة مساعدة لإنشاء رسالة وهمية
+function createFakeMessageText(randomName, addedCount, totalCount, remaining) {
+    return "⚠️ المستخدم " + randomName + " ضاف " + addedCount + " عضو جديد\n" +
+        "✅ المجموع الحالي: " + totalCount + " عضو\n" +
+        "♻️ لازم توصل لـ " + config.targetMembers + " عضو علشان تاخد السري فوراً\n" +
+        "🔥 الفاضل: " + remaining + " عضو";
+}
+
 // دالة لإرسال الرسائل الوهمية
 async function sendFakeMessage() {
     if (!fakeMessagesEnabled || fakeNames.length === 0) return;
     
-    // اختيار اسم عشوائي
-    const randomName = fakeNames[Math.floor(Math.random() * fakeNames.length)];
-    // عدد إضافات عشوائي بين 1 و 5
-    const addedCount = Math.floor(Math.random() * 5) + 1;
-    // عدد كلي وهمي عشوائي بين addedCount و 45
-    const totalCount = Math.floor(Math.random() * (45 - addedCount + 1)) + addedCount;
-    const remaining = Math.max(0, config.targetMembers - totalCount);
-    
-    // توجيه الزر الوهمي لبروفايل group2 (أو شات group2، حسب المطلوب نخليه لبروفايل group2 كافتراضي)
-    const buttonUrl = getGroupProfileLink(config.group2);
-    
-    const groupMsg = "⚠️ المستخدم " + randomName + " ضاف " + addedCount + " عضو جديد\n" +
-        "✅ المجموع الحالي: " + totalCount + " عضو\n" +
-        "♻️ لازم توصل لـ " + config.targetMembers + " عضو علشان تاخد السري فوراً\n" +
-        "🔥 الفاضل: " + remaining + " عضو";
-
     try {
-        // إرسال للجروب الأول
+        // إرسال للجروب الأول باسم عشوائي
         if (config.group1) {
+            const randomName1 = fakeNames[Math.floor(Math.random() * fakeNames.length)];
+            const addedCount1 = Math.floor(Math.random() * 5) + 1;
+            const totalCount1 = Math.floor(Math.random() * (45 - addedCount1 + 1)) + addedCount1;
+            const remaining1 = Math.max(0, config.targetMembers - totalCount1);
+            
+            const groupMsg1 = createFakeMessageText(randomName1, addedCount1, totalCount1, remaining1);
             const chatId1 = String(config.group1).startsWith('@') ? config.group1 : '@' + config.group1;
-            const buttonUrl1 = getGroupLink(config.group2); // في الجروب الأول الزر يوجه لشات الثاني
-            await bot.sendMessage(chatId1, groupMsg, { reply_markup: buildJoinKeyboard(buttonUrl1) }).catch(()=>{});
+            const buttonUrl1 = getGroupLink(config.group2);
+            await bot.sendMessage(chatId1, groupMsg1, { reply_markup: buildJoinKeyboard(buttonUrl1) }).catch(()=>{});
         }
-        // إرسال للجروب الثاني
+        
+        // إرسال للجروب الثاني باسم عشوائي مختلف
         if (config.group2) {
+            const randomName2 = fakeNames[Math.floor(Math.random() * fakeNames.length)];
+            const addedCount2 = Math.floor(Math.random() * 5) + 1;
+            const totalCount2 = Math.floor(Math.random() * (45 - addedCount2 + 1)) + addedCount2;
+            const remaining2 = Math.max(0, config.targetMembers - totalCount2);
+            
+            const groupMsg2 = createFakeMessageText(randomName2, addedCount2, totalCount2, remaining2);
             const chatId2 = String(config.group2).startsWith('@') ? config.group2 : '@' + config.group2;
-            const buttonUrl2 = getGroupProfileLink(config.group2); // في الجروب الثاني الزر يوجه لبروفايل الثاني
-            await bot.sendMessage(chatId2, groupMsg, { reply_markup: buildJoinKeyboard(buttonUrl2) }).catch(()=>{});
+            const buttonUrl2 = getGroupProfileLink(config.group2);
+            await bot.sendMessage(chatId2, groupMsg2, { reply_markup: buildJoinKeyboard(buttonUrl2) }).catch(()=>{});
         }
     } catch (err) {
         // تجاهل الأخطاء الصامتة للرسائل الوهمية
     }
 }
 
-// تشغيل/إيقاف المؤقت للرسائل الوهمية
+// تشغيل/إيقاف/تحديث المؤقت للرسائل الوهمية
+function updateFakeMessagesInterval() {
+    if (fakeMessageInterval) {
+        clearInterval(fakeMessageInterval);
+        fakeMessageInterval = null;
+    }
+    if (fakeMessagesEnabled) {
+        fakeMessageInterval = setInterval(sendFakeMessage, fakeMessageIntervalSeconds * 1000);
+    }
+}
+
 function toggleFakeMessages() {
     fakeMessagesEnabled = !fakeMessagesEnabled;
-    if (fakeMessagesEnabled) {
-        // إرسال رسالة كل دقيقة (60000 ملي ثانية)
-        fakeMessageInterval = setInterval(sendFakeMessage, 60000);
-    } else {
-        if (fakeMessageInterval) {
-            clearInterval(fakeMessageInterval);
-            fakeMessageInterval = null;
-        }
-    }
+    updateFakeMessagesInterval();
     return fakeMessagesEnabled;
 }
 
@@ -160,12 +223,15 @@ bot.onText(/\/start/, (msg) => {
 
     // إضافة أزرار المطور
     if (userId.toString() === config.adminId.toString()) {
-        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
-        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
+        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db" }]);
+        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast" }]);
         
-        // زر الرسائل الوهمية (أخضر = شغال، أحمر = متوقف)
-        const fakeBtnText = fakeMessagesEnabled ? "🟢 إيقاف الرسائل الوهمية" : "🔴 تشغيل الرسائل الوهمية";
+        // زر الرسائل الوهمية
+        const fakeBtnText = fakeMessagesEnabled ? "🔴 إيقاف الرسائل الوهمية" : "🟢 تشغيل الرسائل الوهمية";
         keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
+        
+        // زر تعديل التوقيت
+        keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval" }]);
     }
 
     bot.sendMessage(chatId, welcomeMessage, {
@@ -206,11 +272,13 @@ bot.on('callback_query', (query) => {
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
         if (userId.toString() === config.adminId.toString()) {
-            keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
-            keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
+            keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db" }]);
+            keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast" }]);
             
-            const fakeBtnText = fakeMessagesEnabled ? "🟢 إيقاف الرسائل الوهمية" : "🔴 تشغيل الرسائل الوهمية";
+            const fakeBtnText = fakeMessagesEnabled ? "🔴 إيقاف الرسائل الوهمية" : "🟢 تشغيل الرسائل الوهمية";
             keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
+            
+            keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval" }]);
         }
         bot.editMessageText(welcomeMessage, {
             chat_id: chatId,
@@ -235,25 +303,48 @@ bot.on('callback_query', (query) => {
             [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
-        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
-        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
+        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db" }]);
+        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast" }]);
         
-        const fakeBtnText = isEnabled ? "🟢 إيقاف الرسائل الوهمية" : "🔴 تشغيل الرسائل الوهمية";
+        const fakeBtnText = isEnabled ? "🔴 إيقاف الرسائل الوهمية" : "🟢 تشغيل الرسائل الوهمية";
         keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
+        keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval" }]);
         
         bot.editMessageReplyMarkup({ inline_keyboard: keyboard }, {
             chat_id: chatId,
             message_id: messageId
         }).catch(()=>{});
     }
+    else if (data === "edit_fake_interval" && userId.toString() === config.adminId.toString()) {
+        adminState[userId] = "WAITING_FOR_FAKE_INTERVAL";
+        bot.sendMessage(chatId, "⏱ ارسل الوقت بالثواني (مثال: 60)\nلإلغاء التعديل أرسل كلمة الغاء");
+    }
 
     bot.answerCallbackQuery(query.id);
 });
 
-// معالجة الإذاعة للمطور
+// معالجة الإذاعة والرسائل للمطور
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
+
+    if (adminState[userId] === "WAITING_FOR_FAKE_INTERVAL" && msg.chat.type === 'private') {
+        if (msg.text && msg.text.includes("الغاء")) {
+            adminState[userId] = null;
+            return bot.sendMessage(chatId, "تم إلغاء التعديل.");
+        }
+        
+        const text = msg.text.trim();
+        if (!/^\d+$/.test(text) || parseInt(text) < 5) {
+            return bot.sendMessage(chatId, "❌ ارسل رقماً صحيحاً (أكبر من 5 ثواني)");
+        }
+        
+        fakeMessageIntervalSeconds = parseInt(text);
+        updateFakeMessagesInterval();
+        adminState[userId] = null;
+        
+        return bot.sendMessage(chatId, `✅ تم تعديل وقت الرسائل الوهمية إلى ${fakeMessageIntervalSeconds} ثانية بنجاح.`);
+    }
 
     if (adminState[userId] === "WAITING_FOR_BROADCAST_MSG" && msg.chat.type === 'private') {
         if (msg.text && msg.text.includes("الغاء")) {
@@ -270,12 +361,26 @@ bot.on('message', async (msg) => {
         let successCount = 0;
         let failCount = 0;
 
-        for (const id of userIds) {
-            try {
-                await bot.copyMessage(id, chatId, msg.message_id);
-                successCount++;
-            } catch (err) {
-                failCount++;
+        // إذا كانت الرسالة نصية، نستخدم HTML مع دعم التنسيقات (bold, spoiler, etc)
+        if (msg.text) {
+            const htmlMsg = convertBotMessageToHtml(msg.text, msg.entities);
+            for (const id of userIds) {
+                try {
+                    await bot.sendMessage(id, htmlMsg, { parse_mode: 'HTML' });
+                    successCount++;
+                } catch (err) {
+                    failCount++;
+                }
+            }
+        } else {
+            // للرسائل التي تحتوي على ميديا (صور، فيديو، إلخ)
+            for (const id of userIds) {
+                try {
+                    await bot.copyMessage(id, chatId, msg.message_id);
+                    successCount++;
+                } catch (err) {
+                    failCount++;
+                }
             }
         }
 
