@@ -15,5 +15,5 @@ module.exports = {
     targetMembers: 50,
 
     // القناة الإجبارية الإضافية التي يجب على الأعضاء الاشتراك بها أولاً
-    requiredChannel: "ZXAZAZ"
+    requiredChannel: "AJamm21"
 };
