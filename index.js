@@ -15,8 +15,8 @@ const processedJoinEvents = new Map();
 // خدعة برمجية لمنع تلف الروابط أثناء النسخ واللصق
 const tgLink = "https://" + "t.me/";
 
-// دالة مساعدة لبناء رابط الجروب
-function getGroupLink(group) {
+// دالة مساعدة لبناء رابط الشات العادي
+function getGroupChatLink(group) {
     return tgLink + String(group || '').replace('@', '');
 }
 
@@ -78,21 +78,17 @@ bot.onText(/\/start/, (msg) => {
     const userId = msg.from.id;
     const fullName = msg.from.first_name + (msg.from.last_name ? ' ' + msg.from.last_name : '');
 
-    // التحقق من أن الرسالة في الخاص وليست في جروب
     if (msg.chat.type !== 'private') return;
 
-    // تسجيل المستخدم في قاعدة البيانات
     db.getUser(userId, fullName);
 
     const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
 
-    // الأزرار الأساسية (توجه المستخدم للجروب الأول كبداية)
     let keyboard = [
-        [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
+        [{ text: "➕ إضافة أصدقائي", url: getGroupChatLink(config.group1), style: 'danger' }],
         [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
     ];
 
-    // إضافة أزرار المطور
     if (userId.toString() === config.adminId.toString()) {
         keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
         keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
@@ -132,7 +128,7 @@ bot.on('callback_query', (query) => {
     else if (data === "back_to_start") {
         const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
+            [{ text: "➕ إضافة أصدقائي", url: getGroupChatLink(config.group1), style: 'danger' }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
         if (userId.toString() === config.adminId.toString()) {
@@ -146,7 +142,6 @@ bot.on('callback_query', (query) => {
             reply_markup: { inline_keyboard: keyboard }
         });
     }
-    // أوامر المطور
     else if (data === "download_db" && userId.toString() === config.adminId.toString()) {
         bot.sendDocument(chatId, './db.json', { caption: "📁 تفضل، هذه أحدث نسخة من قاعدة البيانات الخاصة بالمستخدمين." });
     }
@@ -227,7 +222,6 @@ bot.on('message', async (msg) => {
         const adderId = msg.from.id;
         const adderName = msg.from.first_name;
 
-        // جميع الأزرار داخل الجروبات ستوجه المستخدم للجروب الثاني الخاص بالإضافة
         const buttonUrl = getGroupProfileLink(config.group2);
 
         db.getUser(adderId, adderName);
@@ -243,10 +237,8 @@ bot.on('message', async (msg) => {
             }
         });
 
-        // 1. إذا انضم المستخدم بنفسه لأي من الجروبين
         if (selfJoin) {
             if (!claimJoinEvent(msg.chat.id, adderId)) {
-                // لو تم التعامل معه من chat_member بالفعل، لا نكرر الرسالة
             } else {
                 const user = db.getUser(adderId, adderName);
                 const remaining = Math.max(0, config.targetMembers - user.addedCount);
@@ -255,7 +247,6 @@ bot.on('message', async (msg) => {
             }
         }
 
-        // 2. إذا قام المستخدم بإضافة أعضاء آخرين
         if (addedRealMembersCount > 0) {
             const updatedUser = db.addPoints(adderId, adderName, addedRealMembersCount);
             const remaining = Math.max(0, config.targetMembers - updatedUser.addedCount);
@@ -269,7 +260,6 @@ bot.on('message', async (msg) => {
                 buttonUrl
             );
 
-            // تسليم الجروب السري إذا تم إكمال الهدف
             if (updatedUser.addedCount >= config.targetMembers && !updatedUser.reachedTarget) {
                 const rewardMsg = "🎉 **ألف مبروك!** لقد أكملت إضافة " + config.targetMembers + " عضو.\n\nتفضل رابط الجروب السري الخاص بك:\n" + config.secretGroupLink + "\n\nيُرجى عدم مشاركة الرابط مع أحد.";
 
