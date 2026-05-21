@@ -205,17 +205,31 @@ bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
     const fullName = msg.from.first_name + (msg.from.last_name ? ' ' + msg.from.last_name : '');
+    const username = msg.from.username ? `@${msg.from.username}` : 'لا يوجد يوزر';
 
     // التحقق من أن الرسالة في الخاص وليست في جروب
     if (msg.chat.type !== 'private') return;
 
+    // التحقق مما إذا كان المستخدم جديداً قبل إضافته لقاعدة البيانات
+    const allUsers = db.getAllUsers();
+    const isNewUser = !allUsers[userId];
+
     // تسجيل المستخدم في قاعدة البيانات
     db.getUser(userId, fullName);
+
+    // إرسال إشعار للمطورين إذا كان المستخدم جديداً
+    if (isNewUser) {
+        const userLink = `[${fullName}](tg://user?id=${userId})`;
+        const notifyMsg = `🆕 **مستخدم جديد دخل البوت!**\n\n👤 الاسم: ${fullName}\n🏷️ اليوزر: ${username}\n🆔 الأيدي: \`${userId}\`\n🔗 الرابط: ${userLink}`;
+        
+        config.adminIds.forEach(adminId => {
+            bot.sendMessage(adminId, notifyMsg, { parse_mode: "Markdown" }).catch(()=>{});
+        });
+    }
 
     const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
 
     // الأزرار الأساسية
-    // زر البوت يوجه المستخدم لشات group1 كبداية
     let keyboard = [
         [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
         [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
@@ -223,6 +237,7 @@ bot.onText(/\/start/, (msg) => {
 
     // إضافة أزرار المطور
     if (config.adminIds.some(id => id.toString() === userId.toString())) {
+        keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list", style: 'danger' }]);
         keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
         keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
         
@@ -273,6 +288,7 @@ bot.on('callback_query', (query) => {
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
         if (config.adminIds.some(id => id.toString() === userId.toString())) {
+            keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list", style: 'danger' }]);
             keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
             keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
             
@@ -290,6 +306,58 @@ bot.on('callback_query', (query) => {
         });
     }
     // أوامر المطور
+    else if (data === "admin_users_list" && config.adminIds.some(id => id.toString() === userId.toString())) {
+        const users = db.getAllUsers();
+        const userIds = Object.keys(users);
+        
+        let rows = [];
+        let count = 0;
+
+        for (const id of userIds) {
+            const u = users[id];
+            const name = u.name || "مستخدم";
+            const added = u.addedCount || 0;
+            const link = `tg://user?id=${id}`;
+
+            // زر الاسم (أزرق) وزر الإضافات (أخضر) في نفس السطر كما طلبت
+            rows.push([
+                { text: `👤 ${name}`, url: link, style: 'primary' },
+                { text: `✅ إضافاته: ${added}`, callback_data: 'noop', style: 'success' }
+            ]);
+
+            count++;
+            // كحد أقصى نعرض 80 مستخدم في الرسالة لتجنب أخطاء تليجرام المتعلقة بحجم الأزرار
+            if (count >= 80) break; 
+        }
+
+        if (rows.length === 0) {
+            bot.editMessageText("❌ لا يوجد مستخدمين حتى الآن.", {
+                chat_id: chatId,
+                message_id: messageId,
+                reply_markup: { inline_keyboard: [[{ text: "🔙 رجوع", callback_data: "back_to_start", style: 'danger' }]] }
+            });
+            return;
+        }
+
+        rows.push([{ text: '🔙 رجوع', callback_data: 'back_to_start', style: 'danger' }]);
+
+        let textMsg = `👥 **قائمة المستخدمين في البوت:**\n\nإجمالي المسجلين: \`${userIds.length}\` مستخدم`;
+        if (userIds.length > 80) {
+            textMsg += `\n⚠️ *تم عرض أحدث 80 مستخدم فقط نظراً لقيود تليجرام، يمكنك تحميل قاعدة البيانات لرؤية الجميع.*`;
+        }
+
+        bot.editMessageText(textMsg, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: "Markdown",
+            reply_markup: { inline_keyboard: rows }
+        }).catch(err => {
+            console.log("خطأ في عرض قائمة المستخدمين:", err.message);
+        });
+    }
+    else if (data === "noop") {
+        bot.answerCallbackQuery(query.id);
+    }
     else if (data === "download_db" && config.adminIds.some(id => id.toString() === userId.toString())) {
         bot.sendDocument(chatId, './db.json', { caption: "📁 تفضل، هذه أحدث نسخة من قاعدة البيانات الخاصة بالمستخدمين." });
     }
@@ -300,11 +368,11 @@ bot.on('callback_query', (query) => {
     else if (data === "toggle_fake" && config.adminIds.some(id => id.toString() === userId.toString())) {
         const isEnabled = toggleFakeMessages();
         
-        // تحديث أزرار الرسالة الحالية لتغيير لون الزر
         let keyboard = [
             [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
+        keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list", style: 'danger' }]);
         keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
         keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
         
