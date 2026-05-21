@@ -15,34 +15,14 @@ const processedJoinEvents = new Map();
 // خدعة برمجية لمنع تلف الروابط أثناء النسخ واللصق
 const tgLink = "https://" + "t.me/";
 
-// دالة مساعدة لبناء رابط الشات العادي
-function getGroupChatLink(group) {
+// دالة مساعدة لبناء رابط الجروب
+function getGroupLink(group) {
     return tgLink + String(group || '').replace('@', '');
 }
 
 // دالة مساعدة لفتح ملف الجروب/البروفايل مباشرة
 function getGroupProfileLink(group) {
     return tgLink + String(group || '').replace('@', '') + "?profile";
-}
-
-// دالة تحدد رابط الزر حسب مكان الرسالة
-function getJoinButtonUrl(chatUsername) {
-    const current = String(chatUsername || '').replace('@', '').toLowerCase();
-    const g1 = String(config.group1 || '').replace('@', '').toLowerCase();
-    const g2 = String(config.group2 || '').replace('@', '').toLowerCase();
-
-    // داخل المجموعة الأولى: يفتح شات المجموعة الثانية عادي
-    if (current === g1) {
-        return getGroupChatLink(config.group2);
-    }
-
-    // داخل المجموعة الثانية: يفتح بروفايل المجموعة الثانية
-    if (current === g2) {
-        return getGroupProfileLink(config.group2);
-    }
-
-    // أي حالة أخرى احتياطية
-    return getGroupChatLink(config.group2);
 }
 
 // دالة مساعدة لبناء الأزرار الخاصة بإضافة الأعضاء
@@ -98,17 +78,21 @@ bot.onText(/\/start/, (msg) => {
     const userId = msg.from.id;
     const fullName = msg.from.first_name + (msg.from.last_name ? ' ' + msg.from.last_name : '');
 
+    // التحقق من أن الرسالة في الخاص وليست في جروب
     if (msg.chat.type !== 'private') return;
 
+    // تسجيل المستخدم في قاعدة البيانات
     db.getUser(userId, fullName);
 
     const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
 
+    // الأزرار الأساسية (توجه المستخدم للجروب الأول كبداية)
     let keyboard = [
-        [{ text: "➕ إضافة أصدقائي", url: getGroupChatLink(config.group1), style: 'danger' }],
+        [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
         [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
     ];
 
+    // إضافة أزرار المطور
     if (userId.toString() === config.adminId.toString()) {
         keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
         keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
@@ -148,7 +132,7 @@ bot.on('callback_query', (query) => {
     else if (data === "back_to_start") {
         const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: getGroupChatLink(config.group1), style: 'danger' }],
+            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
         if (userId.toString() === config.adminId.toString()) {
@@ -162,6 +146,7 @@ bot.on('callback_query', (query) => {
             reply_markup: { inline_keyboard: keyboard }
         });
     }
+    // أوامر المطور
     else if (data === "download_db" && userId.toString() === config.adminId.toString()) {
         bot.sendDocument(chatId, './db.json', { caption: "📁 تفضل، هذه أحدث نسخة من قاعدة البيانات الخاصة بالمستخدمين." });
     }
@@ -226,7 +211,7 @@ bot.on('chat_member', async (update) => {
         const user = db.getUser(adderId, adderName);
         const remaining = Math.max(0, config.targetMembers - user.addedCount);
 
-        const buttonUrl = getJoinButtonUrl(update.chat.username);
+        const buttonUrl = getGroupProfileLink(config.group2);
 
         await sendGroupProgressMessage(chatId, adderName, 0, user.addedCount, remaining, buttonUrl);
 
@@ -242,10 +227,8 @@ bot.on('message', async (msg) => {
         const adderId = msg.from.id;
         const adderName = msg.from.first_name;
 
-        // هنا الزر يتغير حسب اسم الجروب الحالي:
-        // - في المجموعة الأولى: يفتح شات المجموعة الثانية
-        // - في المجموعة الثانية: يفتح بروفايل المجموعة الثانية
-        const buttonUrl = getJoinButtonUrl(msg.chat.username);
+        // جميع الأزرار داخل الجروبات ستوجه المستخدم للجروب الثاني الخاص بالإضافة
+        const buttonUrl = getGroupProfileLink(config.group2);
 
         db.getUser(adderId, adderName);
 
