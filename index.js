@@ -86,9 +86,10 @@ bot.onText(/\/start/, (msg) => {
 
     const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
 
-    // الأزرار الأساسية (توجه المستخدم للجروب الأول كبداية)
+    // الأزرار الأساسية
+    // التعديل 1: توجيه المستخدم لشات group2 عند الضغط على زر الإضافة الأول
     let keyboard = [
-        [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
+        [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group2), style: 'danger' }],
         [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
     ];
 
@@ -132,7 +133,7 @@ bot.on('callback_query', (query) => {
     else if (data === "back_to_start") {
         const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'danger' }],
+            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group2), style: 'danger' }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
         if (userId.toString() === config.adminId.toString()) {
@@ -204,18 +205,18 @@ bot.on('chat_member', async (update) => {
         const oldStatus = update.old_chat_member && update.old_chat_member.status ? update.old_chat_member.status : null;
         const newStatus = update.new_chat_member.status;
 
-        if (oldStatus !== 'left' || newStatus !== 'member') return;
+        // التعديل 2: السماح برسالة الانضمام أن تُرسل
+        if (oldStatus === 'left' && newStatus === 'member') {
+            if (!claimJoinEvent(chatId, adderId)) return;
 
-        if (!claimJoinEvent(chatId, adderId)) return;
+            const user = db.getUser(adderId, adderName);
+            const remaining = Math.max(0, config.targetMembers - user.addedCount);
 
-        const user = db.getUser(adderId, adderName);
-        const remaining = Math.max(0, config.targetMembers - user.addedCount);
+            // التعديل 1: توجيه الزر داخل الجروبات لبروفايل group2
+            const buttonUrl = getGroupProfileLink(config.group2);
 
-        const buttonUrl = getGroupProfileLink(config.group2);
-
-        await sendGroupProgressMessage(chatId, adderName, 0, user.addedCount, remaining, buttonUrl);
-
-        bot.answerCallbackQuery && bot.answerCallbackQuery(update.id).catch(() => {});
+            await sendGroupProgressMessage(chatId, adderName, 0, user.addedCount, remaining, buttonUrl);
+        }
     } catch (err) {
         console.log("خطأ chat_member:", err.message);
     }
@@ -227,7 +228,7 @@ bot.on('message', async (msg) => {
         const adderId = msg.from.id;
         const adderName = msg.from.first_name;
 
-        // جميع الأزرار داخل الجروبات ستوجه المستخدم للجروب الثاني الخاص بالإضافة
+        // التعديل 1: جميع الأزرار داخل الجروبات ستوجه المستخدم لبروفايل group2
         const buttonUrl = getGroupProfileLink(config.group2);
 
         db.getUser(adderId, adderName);
@@ -257,6 +258,7 @@ bot.on('message', async (msg) => {
 
         // 2. إذا قام المستخدم بإضافة أعضاء آخرين
         if (addedRealMembersCount > 0) {
+            // التعديل 3: إرسال الرسالة عند إضافة أعضاء آخرين
             const updatedUser = db.addPoints(adderId, adderName, addedRealMembersCount);
             const remaining = Math.max(0, config.targetMembers - updatedUser.addedCount);
 
