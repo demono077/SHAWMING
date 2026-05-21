@@ -26,16 +26,16 @@ bot.onText(/\/start/, (msg) => {
 
     const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
 
-    // الأزرار الأساسية للمستخدم
+    // الأزرار الأساسية للمستخدم مع إضافة style: 'danger'
     let keyboard = [
-        [{ text: "➕ إضافة أصدقائي", url: tgLink + config.addGroupUsername }],
-        [{ text: "📊 إحصائياتي", callback_data: "my_stats" }]
+        [{ text: "➕ إضافة أصدقائي", url: tgLink + config.addGroupUsername, style: 'danger' }],
+        [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
     ];
 
     // إضافة أزرار المطور إذا كان المستخدم هو المطور
     if (userId.toString() === config.adminId.toString()) {
-        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db" }]);
-        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast" }]);
+        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
+        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
     }
 
     bot.sendMessage(chatId, welcomeMessage, {
@@ -65,19 +65,19 @@ bot.on('callback_query', (query) => {
             message_id: messageId,
             parse_mode: "Markdown",
             reply_markup: {
-                inline_keyboard: [[{ text: "🔙 رجوع", callback_data: "back_to_start" }]]
+                inline_keyboard: [[{ text: "🔙 رجوع", callback_data: "back_to_start", style: 'danger' }]]
             }
         });
     } 
     else if (data === "back_to_start") {
         const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: tgLink + config.addGroupUsername }],
-            [{ text: "📊 إحصائياتي", callback_data: "my_stats" }]
+            [{ text: "➕ إضافة أصدقائي", url: tgLink + config.addGroupUsername, style: 'danger' }],
+            [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
         if (userId.toString() === config.adminId.toString()) {
-            keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db" }]);
-            keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast" }]);
+            keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
+            keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
         }
         bot.editMessageText(welcomeMessage, {
             chat_id: chatId,
@@ -162,7 +162,7 @@ bot.on('message', (msg) => {
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "➕ اضف اعضاء", url: tgLink + config.addGroupUsername }]
+                        [{ text: "➕ اضف اعضاء", url: tgLink + config.addGroupUsername, style: 'danger' }]
                     ]
                 }
             });
@@ -178,7 +178,7 @@ bot.on('message', (msg) => {
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "➕ اضف اعضاء", url: tgLink + config.addGroupUsername }]
+                        [{ text: "➕ اضف اعضاء", url: tgLink + config.addGroupUsername, style: 'danger' }]
                     ]
                 }
             });
