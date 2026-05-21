@@ -1,4 +1,3 @@
-```javascript
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('./config');
 const db = require('./db');
@@ -198,6 +197,3 @@ bot.on('message', (msg) => {
 });
 
 console.log("✅ البوت يعمل بنجاح...");
-
-
-```
