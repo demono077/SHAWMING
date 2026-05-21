@@ -206,7 +206,7 @@ bot.on('chat_member', async (update) => {
         const user = db.getUser(adderId, adderName);
         const remaining = Math.max(0, config.targetMembers - user.addedCount);
 
-        const buttonUrl = getGroupProfileLink(config.group2);
+        const buttonUrl = getGroupChatLink(config.group2);
 
         await sendGroupProgressMessage(chatId, adderName, 0, user.addedCount, remaining, buttonUrl);
 
@@ -222,7 +222,8 @@ bot.on('message', async (msg) => {
         const adderId = msg.from.id;
         const adderName = msg.from.first_name;
 
-        const buttonUrl = getGroupProfileLink(config.group2);
+        // هنا تم تعديل الزر ليفتح شات المجموعة الثانية عادي بدون profile
+        const buttonUrl = getGroupChatLink(config.group2);
 
         db.getUser(adderId, adderName);
 
