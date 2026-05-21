@@ -97,7 +97,7 @@ function getGroupProfileLink(group) {
 function buildJoinKeyboard(buttonUrl) {
     return {
         inline_keyboard: [
-            [{ text: "➕ اضف اعضاء", url: buttonUrl, style: 'danger' }]
+            [{ text: "➕ اضف اعضاء", url: buttonUrl, style: 'success' }]
         ]
     };
 }
