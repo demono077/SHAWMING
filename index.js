@@ -103,29 +103,24 @@ function saveConfig() {
     }
 }
 
-// خدعة برمجية لمنع تلف الروابط أثناء النسخ واللصق
 const tgLink = "https://" + "t.me/";
 
-// دالة مساعدة لبناء رابط الجروب
 function getGroupLink(group) {
     return tgLink + String(group || '').replace('@', '');
 }
 
-// دالة مساعدة لفتح ملف الجروب/البروفايل مباشرة
 function getGroupProfileLink(group) {
     return tgLink + String(group || '').replace('@', '') + "?profile";
 }
 
-// دالة مساعدة لبناء الأزرار الخاصة بإضافة الأعضاء
 function buildJoinKeyboard(buttonUrl) {
     return {
         inline_keyboard: [
-            [{ text: "➕ اضف اعضاء", url: buttonUrl, style: 'success' }]
+            [{ text: "➕ اضف اعضاء", url: buttonUrl }]
         ]
     };
 }
 
-// دالة مساعدة لتحديد هل تم التعامل مع حدث الانضمام مسبقًا
 function claimJoinEvent(chatId, userId) {
     const key = `${chatId}:${userId}`;
     const now = Date.now();
@@ -145,7 +140,6 @@ function claimJoinEvent(chatId, userId) {
     return true;
 }
 
-// دالة مساعدة لإنشاء رسالة وهمية
 function createFakeMessageText(randomName, addedCount, totalCount, remaining) {
     return "⚠️ المستخدم " + randomName + " ضاف " + addedCount + " عضو جديد\n" +
         "✅ المجموع الحالي: " + totalCount + " عضو\n" +
@@ -153,12 +147,10 @@ function createFakeMessageText(randomName, addedCount, totalCount, remaining) {
         "🔥 الفاضل: " + remaining + " عضو";
 }
 
-// دالة لإرسال الرسائل الوهمية
 async function sendFakeMessage() {
     if (!fakeMessagesEnabled || fakeNames.length === 0) return;
     
     try {
-        // إرسال للجروب الأول باسم عشوائي
         if (config.group1) {
             const randomName1 = fakeNames[Math.floor(Math.random() * fakeNames.length)];
             const addedCount1 = Math.floor(Math.random() * 5) + 1;
@@ -171,7 +163,6 @@ async function sendFakeMessage() {
             await bot.sendMessage(chatId1, groupMsg1, { reply_markup: buildJoinKeyboard(buttonUrl1) }).catch(()=>{});
         }
         
-        // إرسال للجروب الثاني باسم عشوائي مختلف
         if (config.group2) {
             const randomName2 = fakeNames[Math.floor(Math.random() * fakeNames.length)];
             const addedCount2 = Math.floor(Math.random() * 5) + 1;
@@ -188,7 +179,6 @@ async function sendFakeMessage() {
     }
 }
 
-// تشغيل/إيقاف/تحديث المؤقت للرسائل الوهمية
 function updateFakeMessagesInterval() {
     if (fakeMessageInterval) {
         clearInterval(fakeMessageInterval);
@@ -205,7 +195,6 @@ function toggleFakeMessages() {
     return fakeMessagesEnabled;
 }
 
-// دالة موحدة لإرسال رسالة التحديث داخل الجروب مع الزر
 async function sendGroupProgressMessage(chatId, adderName, addedCount, totalCount, remaining, buttonUrl) {
     const groupMsg = "⚠️ المستخدم " + adderName + " ضاف " + addedCount + " عضو جديد\n" +
         "✅ المجموع الحالي: " + totalCount + " عضو\n" +
@@ -223,66 +212,53 @@ async function sendGroupProgressMessage(chatId, adderName, addedCount, totalCoun
     }
 }
 
-// دالة لمعالجة رسالة /start
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
     const fullName = msg.from.first_name + (msg.from.last_name ? ' ' + msg.from.last_name : '');
     const username = msg.from.username ? `@${msg.from.username}` : 'لا يوجد يوزر';
 
-    // التحقق من أن الرسالة في الخاص وليست في جروب
     if (msg.chat.type !== 'private') return;
 
-    // التحقق مما إذا كان المستخدم جديداً قبل إضافته لقاعدة البيانات
     const allUsers = db.getAllUsers();
     const isNewUser = !allUsers[userId];
 
-    // تسجيل المستخدم في قاعدة البيانات
     db.getUser(userId, fullName);
 
-    // إرسال إشعار للمطورين إذا كان المستخدم جديداً
     if (isNewUser) {
-        const userLink = `[${fullName}](tg://user?id=${userId})`;
-        const notifyMsg = `🆕 **مستخدم جديد دخل البوت!**\n\n👤 الاسم: ${fullName}\n🏷️ اليوزر: ${username}\n🆔 الأيدي: \`${userId}\`\n🔗 الرابط: ${userLink}`;
+        const notifyMsg = `🆕 <b>مستخدم جديد دخل البوت!</b>\n\n👤 الاسم: ${fullName}\n🏷️ اليوزر: ${username}\n🆔 الأيدي: <code>${userId}</code>\n🔗 الرابط: <a href="tg://user?id=${userId}">${fullName}</a>`;
         
         config.adminIds.forEach(adminId => {
-            bot.sendMessage(adminId, notifyMsg, { parse_mode: "Markdown" }).catch(()=>{});
+            bot.sendMessage(adminId, notifyMsg, { parse_mode: "HTML" }).catch(()=>{});
         });
     }
 
-    const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
+    const welcomeMessage = "أهلاً يا <b>" + fullName + "</b>\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
 
-    // الأزرار الأساسية
     let keyboard = [
-        [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'success' }],
-        [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
+        [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1) }],
+        [{ text: "📊 إحصائياتي", callback_data: "my_stats" }]
     ];
 
-    // إضافة أزرار المطور
     if (config.adminIds.some(id => id.toString() === userId.toString())) {
-        keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups", style: 'danger' }]);
-        keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list", style: 'danger' }]);
-        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
-        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
+        keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups" }]);
+        keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list" }]);
+        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db" }]);
+        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast" }]);
         
-        // زر الرسائل الوهمية بلون متغير حسب الحالة
         const fakeBtnText = fakeMessagesEnabled ? "🔴 إيقاف الرسائل الوهمية" : "🟢 تشغيل الرسائل الوهمية";
-        const fakeBtnStyle = fakeMessagesEnabled ? 'success' : 'danger';
-        keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake", style: fakeBtnStyle }]);
-        
-        // زر تعديل التوقيت
-        keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval", style: 'danger' }]);
+        keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
+        keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval" }]);
     }
 
     bot.sendMessage(chatId, welcomeMessage, {
-        parse_mode: "Markdown",
+        parse_mode: "HTML",
         reply_markup: {
             inline_keyboard: keyboard
         }
     }).catch(err => console.error("خطأ في إرسال رسالة الترحيب:", err.message));
 });
 
-// معالجة الضغط على الأزرار (Callback Queries)
 bot.on('callback_query', (query) => {
     const chatId = query.message.chat.id;
     const userId = query.from.id;
@@ -294,45 +270,42 @@ bot.on('callback_query', (query) => {
         const user = db.getUser(userId, fullName);
         const remaining = Math.max(0, config.targetMembers - user.addedCount);
 
-        const statsMsg = "📊 **إحصائياتك الحالية:**\n\n✅ عدد إضافاتك: " + user.addedCount + "\n🎯 الهدف: " + config.targetMembers + "\n🔥 المتبقي لك: " + remaining + " عضو\n\n🚀 استمر في الإضافة لفتح الرابط السري!";
+        const statsMsg = "📊 <b>إحصائياتك الحالية:</b>\n\n✅ عدد إضافاتك: " + user.addedCount + "\n🎯 الهدف: " + config.targetMembers + "\n🔥 المتبقي لك: " + remaining + " عضو\n\n🚀 استمر في الإضافة لفتح الرابط السري!";
 
         bot.editMessageText(statsMsg, {
             chat_id: chatId,
             message_id: messageId,
-            parse_mode: "Markdown",
+            parse_mode: "HTML",
             reply_markup: {
-                inline_keyboard: [[{ text: "🔙 رجوع", callback_data: "back_to_start", style: 'danger' }]]
+                inline_keyboard: [[{ text: "🔙 رجوع", callback_data: "back_to_start" }]]
             }
-        });
+        }).catch(err => console.error(err.message));
     }
     else if (data === "back_to_start") {
-        const welcomeMessage = "أهلاً يا **" + fullName + "**\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
+        const welcomeMessage = "أهلاً يا <b>" + fullName + "</b>\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'success' }],
-            [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
+            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1) }],
+            [{ text: "📊 إحصائياتي", callback_data: "my_stats" }]
         ];
         if (config.adminIds.some(id => id.toString() === userId.toString())) {
-            keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups", style: 'danger' }]);
-            keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list", style: 'danger' }]);
-            keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
-            keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
+            keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups" }]);
+            keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list" }]);
+            keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db" }]);
+            keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast" }]);
             
             const fakeBtnText = fakeMessagesEnabled ? "🔴 إيقاف الرسائل الوهمية" : "🟢 تشغيل الرسائل الوهمية";
-            const fakeBtnStyle = fakeMessagesEnabled ? 'success' : 'danger';
-            keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake", style: fakeBtnStyle }]);
-            
-            keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval", style: 'danger' }]);
+            keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
+            keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval" }]);
         }
         bot.editMessageText(welcomeMessage, {
             chat_id: chatId,
             message_id: messageId,
-            parse_mode: "Markdown",
+            parse_mode: "HTML",
             reply_markup: { inline_keyboard: keyboard }
-        });
+        }).catch(err => console.error(err.message));
     }
-    // أوامر المطور
     else if (data === "manage_groups" && config.adminIds.some(id => id.toString() === userId.toString())) {
-        const groupsMsg = `⚙️ **إدارة الجروبات**\n\n` +
+        const groupsMsg = `⚙️ <b>إدارة الجروبات</b>\n\n` +
             `الجروب الأول الحالي (البوابة): @${config.group1}\n` +
             `الجروب الثاني الحالي: @${config.group2}\n\n` +
             `اختر الجروب الذي تريد تغييره:`;
@@ -346,9 +319,9 @@ bot.on('callback_query', (query) => {
         bot.editMessageText(groupsMsg, {
             chat_id: chatId,
             message_id: messageId,
-            parse_mode: "Markdown",
+            parse_mode: "HTML",
             reply_markup: { inline_keyboard: keyboard }
-        });
+        }).catch(err => console.error("حدث خطأ أثناء تحميل إدارة الجروبات: ", err.message));
     }
     else if (data === "edit_group1" && config.adminIds.some(id => id.toString() === userId.toString())) {
         adminState[userId] = "WAITING_FOR_GROUP1";
@@ -371,14 +344,12 @@ bot.on('callback_query', (query) => {
             const added = u.addedCount || 0;
             const link = `tg://user?id=${id}`;
 
-            // زر الاسم (أزرق) وزر الإضافات (أخضر) في نفس السطر كما طلبت
             rows.push([
-                { text: `👤 ${name}`, url: link, style: 'primary' },
-                { text: `✅ إضافاته: ${added}`, callback_data: 'noop', style: 'success' }
+                { text: `👤 ${name}`, url: link },
+                { text: `✅ إضافاته: ${added}`, callback_data: 'noop' }
             ]);
 
             count++;
-            // كحد أقصى نعرض 80 مستخدم في الرسالة لتجنب أخطاء تليجرام المتعلقة بحجم الأزرار
             if (count >= 80) break; 
         }
 
@@ -386,22 +357,22 @@ bot.on('callback_query', (query) => {
             bot.editMessageText("❌ لا يوجد مستخدمين حتى الآن.", {
                 chat_id: chatId,
                 message_id: messageId,
-                reply_markup: { inline_keyboard: [[{ text: "🔙 رجوع", callback_data: "back_to_start", style: 'danger' }]] }
-            });
+                reply_markup: { inline_keyboard: [[{ text: "🔙 رجوع", callback_data: "back_to_start" }]] }
+            }).catch(err => console.error(err.message));
             return;
         }
 
-        rows.push([{ text: '🔙 رجوع', callback_data: 'back_to_start', style: 'danger' }]);
+        rows.push([{ text: '🔙 رجوع', callback_data: 'back_to_start' }]);
 
-        let textMsg = `👥 **قائمة المستخدمين في البوت:**\n\nإجمالي المسجلين: \`${userIds.length}\` مستخدم`;
+        let textMsg = `👥 <b>قائمة المستخدمين في البوت:</b>\n\nإجمالي المسجلين: <code>${userIds.length}</code> مستخدم`;
         if (userIds.length > 80) {
-            textMsg += `\n⚠️ *تم عرض أحدث 80 مستخدم فقط نظراً لقيود تليجرام، يمكنك تحميل قاعدة البيانات لرؤية الجميع.*`;
+            textMsg += `\n⚠️ <i>تم عرض أحدث 80 مستخدم فقط نظراً لقيود تليجرام، يمكنك تحميل قاعدة البيانات لرؤية الجميع.</i>`;
         }
 
         bot.editMessageText(textMsg, {
             chat_id: chatId,
             message_id: messageId,
-            parse_mode: "Markdown",
+            parse_mode: "HTML",
             reply_markup: { inline_keyboard: rows }
         }).catch(err => {
             console.log("خطأ في عرض قائمة المستخدمين:", err.message);
@@ -415,24 +386,23 @@ bot.on('callback_query', (query) => {
     }
     else if (data === "broadcast" && config.adminIds.some(id => id.toString() === userId.toString())) {
         adminState[userId] = "WAITING_FOR_BROADCAST_MSG";
-        bot.sendMessage(chatId, "📢 قم بإرسال الرسالة الآن (نص، صورة، فيديو، الخ..). سيتم إرسالها لجميع مستخدمي البوت.\nلإلغاء الإذاعة أرسل كلمة الغاء", { parse_mode: "Markdown" });
+        bot.sendMessage(chatId, "📢 قم بإرسال الرسالة الآن (نص، صورة، فيديو، الخ..). سيتم إرسالها لجميع مستخدمي البوت.\nلإلغاء الإذاعة أرسل كلمة الغاء");
     }
     else if (data === "toggle_fake" && config.adminIds.some(id => id.toString() === userId.toString())) {
         const isEnabled = toggleFakeMessages();
         
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'success' }],
-            [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
+            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1) }],
+            [{ text: "📊 إحصائياتي", callback_data: "my_stats" }]
         ];
-        keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups", style: 'danger' }]);
-        keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list", style: 'danger' }]);
-        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
-        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
+        keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups" }]);
+        keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list" }]);
+        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db" }]);
+        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast" }]);
         
         const fakeBtnText = isEnabled ? "🔴 إيقاف الرسائل الوهمية" : "🟢 تشغيل الرسائل الوهمية";
-        const fakeBtnStyle = isEnabled ? 'success' : 'danger';
-        keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake", style: fakeBtnStyle }]);
-        keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval", style: 'danger' }]);
+        keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
+        keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval" }]);
         
         bot.editMessageReplyMarkup({ inline_keyboard: keyboard }, {
             chat_id: chatId,
@@ -447,7 +417,6 @@ bot.on('callback_query', (query) => {
     bot.answerCallbackQuery(query.id);
 });
 
-// معالجة الإذاعة والرسائل وإدارة الجروبات للمطور
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -460,7 +429,7 @@ bot.on('message', async (msg) => {
         
         let newGroup = msg.text.trim().replace('@', '');
         config.group1 = newGroup;
-        saveConfig(); // حفظ الإعدادات في الملف
+        saveConfig(); 
         adminState[userId] = null;
         
         return bot.sendMessage(chatId, `✅ تم تغيير الجروب الأول بنجاح إلى: @${newGroup}`);
@@ -474,7 +443,7 @@ bot.on('message', async (msg) => {
         
         let newGroup = msg.text.trim().replace('@', '');
         config.group2 = newGroup;
-        saveConfig(); // حفظ الإعدادات في الملف
+        saveConfig(); 
         adminState[userId] = null;
         
         return bot.sendMessage(chatId, `✅ تم تغيير الجروب الثاني بنجاح إلى: @${newGroup}`);
@@ -513,7 +482,6 @@ bot.on('message', async (msg) => {
         let successCount = 0;
         let failCount = 0;
 
-        // إذا كانت الرسالة نصية، نستخدم HTML مع دعم التنسيقات (bold, spoiler, etc)
         if (msg.text) {
             const htmlMsg = convertBotMessageToHtml(msg.text, msg.entities);
             for (const id of userIds) {
@@ -525,7 +493,6 @@ bot.on('message', async (msg) => {
                 }
             }
         } else {
-            // للرسائل التي تحتوي على ميديا (صور، فيديو، إلخ)
             for (const id of userIds) {
                 try {
                     await bot.copyMessage(id, chatId, msg.message_id);
@@ -536,11 +503,10 @@ bot.on('message', async (msg) => {
             }
         }
 
-        bot.sendMessage(chatId, "✅ **اكتملت الإذاعة!**\n\nنجح الإرسال لـ: " + successCount + "\nفشل الإرسال لـ: " + failCount + " (حظروا البوت)", { parse_mode: "Markdown" });
+        bot.sendMessage(chatId, "✅ <b>اكتملت الإذاعة!</b>\n\nنجح الإرسال لـ: " + successCount + "\nفشل الإرسال لـ: " + failCount + " (حظروا البوت)", { parse_mode: "HTML" });
     }
 });
 
-// مسار احتياطي عبر chat_member (يُستخدم فقط إذا لم يصل حدث new_chat_members)
 bot.on('chat_member', async (update) => {
     try {
         if (!update || !update.chat || !update.from || !update.new_chat_member) return;
@@ -553,16 +519,12 @@ bot.on('chat_member', async (update) => {
         const oldStatus = update.old_chat_member && update.old_chat_member.status ? update.old_chat_member.status : null;
         const newStatus = update.new_chat_member.status;
 
-        // نتعامل فقط مع حالة الانضمام الجديد
         if (oldStatus === 'left' && newStatus === 'member') {
-            // claimJoinEvent تمنع التكرار: إذا سبق معالجته عبر new_chat_members لن يُعالج هنا
             if (!claimJoinEvent(chatId, adderId)) return;
 
             const user = db.getUser(adderId, adderName);
             const remaining = Math.max(0, config.targetMembers - user.addedCount);
 
-            // إذا كان الانضمام في group1: الزر يوجه لشات group2
-            // إذا كان الانضمام في group2: الزر يوجه لبروفايل group2
             const isGroup1 = String(update.chat.username || update.chat.id) === String(config.group1).replace('@', '');
             const buttonUrl = isGroup1 ? getGroupLink(config.group2) : getGroupProfileLink(config.group2);
 
@@ -573,15 +535,11 @@ bot.on('chat_member', async (update) => {
     }
 });
 
-// مراقبة الجروبات لمعرفة من قام بالانضمام أو إضافة أعضاء
-// هذا الحدث هو المسار الأسرع والأساسي لكلا الجروبين
 bot.on('message', async (msg) => {
     if (msg.chat.type !== 'private' && msg.new_chat_members) {
         const adderId = msg.from.id;
         const adderName = msg.from.first_name;
 
-        // إذا كانت الرسالة في group1: الزر يوجه لشات group2
-        // إذا كانت الرسالة في group2: الزر يوجه لبروفايل group2
         const isGroup1 = String(msg.chat.username || msg.chat.id) === String(config.group1).replace('@', '');
         const buttonUrl = isGroup1 ? getGroupLink(config.group2) : getGroupProfileLink(config.group2);
 
@@ -598,11 +556,9 @@ bot.on('message', async (msg) => {
             }
         });
 
-        // 1. إذا انضم المستخدم بنفسه لأي من الجروبين
-        // claimJoinEvent هنا تحجز الحدث فوراً لمنع chat_member من إعادة إرسال الرسالة
         if (selfJoin) {
             if (!claimJoinEvent(msg.chat.id, adderId)) {
-                // لو تم التعامل معه من chat_member بالفعل، لا نكرر الرسالة
+                // ...
             } else {
                 const user = db.getUser(adderId, adderName);
                 const remaining = Math.max(0, config.targetMembers - user.addedCount);
@@ -611,9 +567,7 @@ bot.on('message', async (msg) => {
             }
         }
 
-        // 2. إذا قام المستخدم بإضافة أعضاء آخرين
         if (addedRealMembersCount > 0) {
-            // التعديل 3: إرسال الرسالة عند إضافة أعضاء آخرين
             const updatedUser = db.addPoints(adderId, adderName, addedRealMembersCount);
             const remaining = Math.max(0, config.targetMembers - updatedUser.addedCount);
 
@@ -626,18 +580,17 @@ bot.on('message', async (msg) => {
                 buttonUrl
             );
 
-            // تسليم الجروب السري إذا تم إكمال الهدف
             if (updatedUser.addedCount >= config.targetMembers && !updatedUser.reachedTarget) {
-                const rewardMsg = "🎉 **ألف مبروك!** لقد أكملت إضافة " + config.targetMembers + " عضو.\n\nاضغط على الزر بالأسفل للدخول إلى الجروب السري:\n\nيُرجى عدم مشاركة الرابط مع أحد.";
+                const rewardMsg = "🎉 <b>ألف مبروك!</b> لقد أكملت إضافة " + config.targetMembers + " عضو.\n\nاضغط على الزر بالأسفل للدخول إلى الجروب السري:\n\nيُرجى عدم مشاركة الرابط مع أحد.";
                 
                 const rewardKeyboard = {
                     inline_keyboard: [
-                        [{ text: "🔓 الدخول للجروب السري", url: config.secretGroupLink, style: 'primary' }]
+                        [{ text: "🔓 الدخول للجروب السري", url: config.secretGroupLink }]
                     ]
                 };
 
                 bot.sendMessage(adderId, rewardMsg, { 
-                    parse_mode: "Markdown",
+                    parse_mode: "HTML",
                     reply_markup: rewardKeyboard
                 })
                 .then(() => {
