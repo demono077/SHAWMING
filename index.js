@@ -80,6 +80,29 @@ function convertBotMessageToHtml(text, entities) {
     return html;
 }
 
+// دالة لحفظ الإعدادات في ملف config.js لتكون دائمة بعد إعادة التشغيل
+function saveConfig() {
+    const configContent = `module.exports = {\n` +
+        `    // توكن البوت الخاص بك\n` +
+        `    token: "${config.token}",\n    \n` +
+        `    // قائمة أيديات المطورين (يمكنك إضافة أي عدد من المطورين هنا)\n` +
+        `    adminIds: [${config.adminIds.join(', ')}],\n    \n` +
+        `    // يوزر الجروب الأول (البوابة) - بدون علامة @\n` +
+        `    group1: "${config.group1}", \n    \n` +
+        `    // يوزر الجروب الثاني (الذي يتم فيه إضافة الأعضاء) - بدون علامة @\n` +
+        `    group2: "${config.group2}",\n    \n` +
+        `    // رابط الجروب السري (الذي يحصل عليه بعد إكمال 50 عضو)\n` +
+        `    secretGroupLink: "${config.secretGroupLink}",\n    \n` +
+        `    // عدد الأعضاء المطلوب إضافتهم للجروب الثاني\n` +
+        `    targetMembers: ${config.targetMembers}\n` +
+        `};`;
+    try {
+        fs.writeFileSync('./config.js', configContent, 'utf8');
+    } catch (err) {
+        console.error("خطأ في حفظ الإعدادات:", err.message);
+    }
+}
+
 // خدعة برمجية لمنع تلف الروابط أثناء النسخ واللصق
 const tgLink = "https://" + "t.me/";
 
@@ -237,6 +260,7 @@ bot.onText(/\/start/, (msg) => {
 
     // إضافة أزرار المطور
     if (config.adminIds.some(id => id.toString() === userId.toString())) {
+        keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups", style: 'danger' }]);
         keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list", style: 'danger' }]);
         keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
         keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
@@ -288,6 +312,7 @@ bot.on('callback_query', (query) => {
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
         if (config.adminIds.some(id => id.toString() === userId.toString())) {
+            keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups", style: 'danger' }]);
             keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list", style: 'danger' }]);
             keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
             keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
@@ -306,6 +331,33 @@ bot.on('callback_query', (query) => {
         });
     }
     // أوامر المطور
+    else if (data === "manage_groups" && config.adminIds.some(id => id.toString() === userId.toString())) {
+        const groupsMsg = `⚙️ **إدارة الجروبات**\n\n` +
+            `الجروب الأول الحالي (البوابة): @${config.group1}\n` +
+            `الجروب الثاني الحالي: @${config.group2}\n\n` +
+            `اختر الجروب الذي تريد تغييره:`;
+        
+        const keyboard = [
+            [{ text: "تغيير الجروب الأول", callback_data: "edit_group1" }],
+            [{ text: "تغيير الجروب الثاني", callback_data: "edit_group2" }],
+            [{ text: "🔙 رجوع", callback_data: "back_to_start" }]
+        ];
+
+        bot.editMessageText(groupsMsg, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: "Markdown",
+            reply_markup: { inline_keyboard: keyboard }
+        });
+    }
+    else if (data === "edit_group1" && config.adminIds.some(id => id.toString() === userId.toString())) {
+        adminState[userId] = "WAITING_FOR_GROUP1";
+        bot.sendMessage(chatId, "أرسل يوزر الجروب الأول (البوابة) الجديد بدون علامة @\nلإلغاء التعديل أرسل كلمة الغاء");
+    }
+    else if (data === "edit_group2" && config.adminIds.some(id => id.toString() === userId.toString())) {
+        adminState[userId] = "WAITING_FOR_GROUP2";
+        bot.sendMessage(chatId, "أرسل يوزر الجروب الثاني الجديد بدون علامة @\nلإلغاء التعديل أرسل كلمة الغاء");
+    }
     else if (data === "admin_users_list" && config.adminIds.some(id => id.toString() === userId.toString())) {
         const users = db.getAllUsers();
         const userIds = Object.keys(users);
@@ -372,6 +424,7 @@ bot.on('callback_query', (query) => {
             [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'success' }],
             [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
+        keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups", style: 'danger' }]);
         keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list", style: 'danger' }]);
         keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
         keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
@@ -394,10 +447,38 @@ bot.on('callback_query', (query) => {
     bot.answerCallbackQuery(query.id);
 });
 
-// معالجة الإذاعة والرسائل للمطور
+// معالجة الإذاعة والرسائل وإدارة الجروبات للمطور
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
+
+    if (adminState[userId] === "WAITING_FOR_GROUP1" && msg.chat.type === 'private') {
+        if (msg.text && msg.text.includes("الغاء")) {
+            adminState[userId] = null;
+            return bot.sendMessage(chatId, "تم إلغاء تعديل الجروب الأول.");
+        }
+        
+        let newGroup = msg.text.trim().replace('@', '');
+        config.group1 = newGroup;
+        saveConfig(); // حفظ الإعدادات في الملف
+        adminState[userId] = null;
+        
+        return bot.sendMessage(chatId, `✅ تم تغيير الجروب الأول بنجاح إلى: @${newGroup}`);
+    }
+
+    if (adminState[userId] === "WAITING_FOR_GROUP2" && msg.chat.type === 'private') {
+        if (msg.text && msg.text.includes("الغاء")) {
+            adminState[userId] = null;
+            return bot.sendMessage(chatId, "تم إلغاء تعديل الجروب الثاني.");
+        }
+        
+        let newGroup = msg.text.trim().replace('@', '');
+        config.group2 = newGroup;
+        saveConfig(); // حفظ الإعدادات في الملف
+        adminState[userId] = null;
+        
+        return bot.sendMessage(chatId, `✅ تم تغيير الجروب الثاني بنجاح إلى: @${newGroup}`);
+    }
 
     if (adminState[userId] === "WAITING_FOR_FAKE_INTERVAL" && msg.chat.type === 'private') {
         if (msg.text && msg.text.includes("الغاء")) {
