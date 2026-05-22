@@ -116,7 +116,7 @@ function getGroupProfileLink(group) {
 function buildJoinKeyboard(buttonUrl) {
     return {
         inline_keyboard: [
-            [{ text: "➕ اضف اعضاء", url: buttonUrl }]
+            [{ text: "➕ اضف اعضاء", url: buttonUrl, style: 'success' }]
         ]
     };
 }
@@ -236,19 +236,21 @@ bot.onText(/\/start/, (msg) => {
     const welcomeMessage = "أهلاً يا <b>" + fullName + "</b>\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
 
     let keyboard = [
-        [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1) }],
-        [{ text: "📊 إحصائياتي", callback_data: "my_stats" }]
+        [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'success' }],
+        [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
     ];
 
     if (config.adminIds.some(id => id.toString() === userId.toString())) {
-        keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups" }]);
-        keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list" }]);
-        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db" }]);
-        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast" }]);
+        keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups", style: 'danger' }]);
+        keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list", style: 'danger' }]);
+        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
+        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
         
         const fakeBtnText = fakeMessagesEnabled ? "🔴 إيقاف الرسائل الوهمية" : "🟢 تشغيل الرسائل الوهمية";
-        keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
-        keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval" }]);
+        const fakeBtnStyle = fakeMessagesEnabled ? 'success' : 'danger';
+        keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake", style: fakeBtnStyle }]);
+        
+        keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval", style: 'danger' }]);
     }
 
     bot.sendMessage(chatId, welcomeMessage, {
@@ -277,26 +279,30 @@ bot.on('callback_query', (query) => {
             message_id: messageId,
             parse_mode: "HTML",
             reply_markup: {
-                inline_keyboard: [[{ text: "🔙 رجوع", callback_data: "back_to_start" }]]
+                inline_keyboard: [[{ text: "🔙 رجوع", callback_data: "back_to_start", style: 'danger' }]]
             }
         }).catch(err => console.error(err.message));
     }
     else if (data === "back_to_start") {
         const welcomeMessage = "أهلاً يا <b>" + fullName + "</b>\n\n🎯 المطلوب لدخول الجروب السري: " + config.targetMembers + " عضو\n\nبالتوفيق للجميع ❤️";
+        
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1) }],
-            [{ text: "📊 إحصائياتي", callback_data: "my_stats" }]
+            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'success' }],
+            [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
         if (config.adminIds.some(id => id.toString() === userId.toString())) {
-            keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups" }]);
-            keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list" }]);
-            keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db" }]);
-            keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast" }]);
+            keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups", style: 'danger' }]);
+            keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list", style: 'danger' }]);
+            keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
+            keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
             
             const fakeBtnText = fakeMessagesEnabled ? "🔴 إيقاف الرسائل الوهمية" : "🟢 تشغيل الرسائل الوهمية";
-            keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
-            keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval" }]);
+            const fakeBtnStyle = fakeMessagesEnabled ? 'success' : 'danger';
+            keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake", style: fakeBtnStyle }]);
+            
+            keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval", style: 'danger' }]);
         }
+        
         bot.editMessageText(welcomeMessage, {
             chat_id: chatId,
             message_id: messageId,
@@ -313,7 +319,7 @@ bot.on('callback_query', (query) => {
         const keyboard = [
             [{ text: "تغيير الجروب الأول", callback_data: "edit_group1" }],
             [{ text: "تغيير الجروب الثاني", callback_data: "edit_group2" }],
-            [{ text: "🔙 رجوع", callback_data: "back_to_start" }]
+            [{ text: "🔙 رجوع", callback_data: "back_to_start", style: 'danger' }]
         ];
 
         bot.editMessageText(groupsMsg, {
@@ -345,8 +351,8 @@ bot.on('callback_query', (query) => {
             const link = `tg://user?id=${id}`;
 
             rows.push([
-                { text: `👤 ${name}`, url: link },
-                { text: `✅ إضافاته: ${added}`, callback_data: 'noop' }
+                { text: `👤 ${name}`, url: link, style: 'primary' },
+                { text: `✅ إضافاته: ${added}`, callback_data: 'noop', style: 'success' }
             ]);
 
             count++;
@@ -357,12 +363,12 @@ bot.on('callback_query', (query) => {
             bot.editMessageText("❌ لا يوجد مستخدمين حتى الآن.", {
                 chat_id: chatId,
                 message_id: messageId,
-                reply_markup: { inline_keyboard: [[{ text: "🔙 رجوع", callback_data: "back_to_start" }]] }
+                reply_markup: { inline_keyboard: [[{ text: "🔙 رجوع", callback_data: "back_to_start", style: 'danger' }]] }
             }).catch(err => console.error(err.message));
             return;
         }
 
-        rows.push([{ text: '🔙 رجوع', callback_data: 'back_to_start' }]);
+        rows.push([{ text: '🔙 رجوع', callback_data: 'back_to_start', style: 'danger' }]);
 
         let textMsg = `👥 <b>قائمة المستخدمين في البوت:</b>\n\nإجمالي المسجلين: <code>${userIds.length}</code> مستخدم`;
         if (userIds.length > 80) {
@@ -392,17 +398,18 @@ bot.on('callback_query', (query) => {
         const isEnabled = toggleFakeMessages();
         
         let keyboard = [
-            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1) }],
-            [{ text: "📊 إحصائياتي", callback_data: "my_stats" }]
+            [{ text: "➕ إضافة أصدقائي", url: getGroupLink(config.group1), style: 'success' }],
+            [{ text: "📊 إحصائياتي", callback_data: "my_stats", style: 'danger' }]
         ];
-        keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups" }]);
-        keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list" }]);
-        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db" }]);
-        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast" }]);
+        keyboard.push([{ text: "⚙️ إدارة الجروبات", callback_data: "manage_groups", style: 'danger' }]);
+        keyboard.push([{ text: "👥 عرض المستخدمين", callback_data: "admin_users_list", style: 'danger' }]);
+        keyboard.push([{ text: "📁 تحميل قاعدة البيانات", callback_data: "download_db", style: 'danger' }]);
+        keyboard.push([{ text: "📢 إذاعة رسالة", callback_data: "broadcast", style: 'danger' }]);
         
         const fakeBtnText = isEnabled ? "🔴 إيقاف الرسائل الوهمية" : "🟢 تشغيل الرسائل الوهمية";
-        keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake" }]);
-        keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval" }]);
+        const fakeBtnStyle = isEnabled ? 'success' : 'danger';
+        keyboard.push([{ text: fakeBtnText, callback_data: "toggle_fake", style: fakeBtnStyle }]);
+        keyboard.push([{ text: `⏱ توقيت الوهمي: ${fakeMessageIntervalSeconds}ث`, callback_data: "edit_fake_interval", style: 'danger' }]);
         
         bot.editMessageReplyMarkup({ inline_keyboard: keyboard }, {
             chat_id: chatId,
@@ -585,7 +592,7 @@ bot.on('message', async (msg) => {
                 
                 const rewardKeyboard = {
                     inline_keyboard: [
-                        [{ text: "🔓 الدخول للجروب السري", url: config.secretGroupLink }]
+                        [{ text: "🔓 الدخول للجروب السري", url: config.secretGroupLink, style: 'primary' }]
                     ]
                 };
 
